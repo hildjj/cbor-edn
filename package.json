@@ -4,7 +4,14 @@
   "decription": "",
   "main": "index.js",
   "type": "module",
-  "keywords": [],
+  "keywords": [
+    "cbor",
+    "edn",
+    "Extended Diagnostic Notation",
+    "parser",
+    "peggy",
+    "abnf"
+  ],
   "author": "Joe Hildebrand <joe-github@cursive.net>",
   "license": "MIT",
   "repository": {
@@ -18,6 +25,7 @@
   "scripts": {
     "clean": "rimraf coverage docs lib",
     "lint": "eslint .",
+    "parser": "peggy --dts --format es src/edn.peggy -o lib/edn.js --allowed-start-rules seq,one_item",
     "pretest": "tsc --inlineSourceMap",
     "test": "c8 node --test",
     "posttest": "npm run ts",
@@ -26,15 +34,20 @@
     "build": "npm run test && npm run lint && npm run docs && npm pack --dry-run"
   },
   "devDependencies": {
+    "@peggyjs/coverage": "1.2.0",
+    "@types/node": "22.3.0",
+    "abnf": "3.0.1",
     "c8": "10.1.2",
     "eslint-plugin-jsdoc": "50.2.2",
     "eslint-plugin-markdown": "5.1.0",
+    "peggy": "github:peggyjs/peggy",
     "rimraf": "6.0.1",
     "typedoc": "0.26.5",
     "typescript": "5.5.4"
   },
   "dependencies": {
     "@cto.af/eslint-config": "4.1.5",
+    "cbor2": "1.4.0",
     "typescript-eslint": "8.1.0"
   },
   "packageManager": "pnpm@9.7.1",

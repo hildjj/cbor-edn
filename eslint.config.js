@@ -19,4 +19,9 @@ export default [
   ...jsdoc,
   ...jts,
   ...markdown,
+  {
+    rules: {
+      'no-new-wrappers': 'off',
+    },
+  },
 ];
