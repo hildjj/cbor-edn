@@ -2,11 +2,15 @@
 .editorconfig
 .gitattributes
 .github/
+.gitmodules
 .ncurc
+.vscode/
 coverage/
 docs/
+edn-abnf/
 eslint.config.js
 src/
+test.c
 test/
 tsconfig.json
 typedoc.config.cjs

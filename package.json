@@ -26,7 +26,7 @@
     "clean": "rimraf coverage docs lib",
     "lint": "eslint .",
     "parser": "peggy --dts --format es src/edn.peggy -o lib/edn.js --allowed-start-rules seq,one_item",
-    "pretest": "tsc --inlineSourceMap",
+    "pretest": "npm run parser && tsc --inlineSourceMap",
     "test": "c8 node --test",
     "posttest": "npm run ts",
     "docs": "typedoc",

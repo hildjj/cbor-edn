@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {hexToU8} from 'cbor2/utils';
 // eslint-disable-next-line n/no-unsupported-features/node-builtins
 import test from 'node:test';
+import util from 'node:util';
 
 test('ByteTree', () => {
   let bt = new ByteTree();
@@ -16,4 +17,19 @@ test('ByteTree', () => {
 
   bt = new ByteTree(bt, hexToU8('0304'), bt);
   assert.deepEqual(bt.bytes(), hexToU8('010203040102'));
+
+  bt = new ByteTree([bt, bt]);
+  assert.deepEqual(bt.bytes(), hexToU8('010203040102010203040102'));
+
+  bt.push(hexToU8('ff'));
+  assert.deepEqual(bt.bytes(), hexToU8('010203040102010203040102ff'));
+
+  assert.equal(
+    bt.toString(),
+    'ByteTree(13)[ByteTree(6)[ByteTree(2)[1,2],3,4,ByteTree(2)[1,2]],ByteTree(6)[ByteTree(2)[1,2],3,4,ByteTree(2)[1,2]],255]'
+  );
+  assert.equal(
+    util.inspect(bt),
+    'ByteTree(13)[ByteTree(6)[ByteTree(2)[1,2],3,4,ByteTree(2)[1,2]],ByteTree(6)[ByteTree(2)[1,2],3,4,ByteTree(2)[1,2]],255]'
+  );
 });

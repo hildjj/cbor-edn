@@ -1,20 +1,27 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S node --enable-source-maps
 /* eslint-disable no-console */
 
-import {diagnose, encode} from 'cbor2';
+import {comment, decode, diagnose} from 'cbor2';
+import fs from 'node:fs';
 import {parseEDN} from '../lib/index.js';
 import {u8toHex} from 'cbor2/utils';
 import util from 'node:util';
 
-if (process.argv.length < 3) {
-  console.error('Usage: edn <EDN literal>');
-  process.exit(64);
-}
-const js = parseEDN(process.argv[2]);
-console.log(util.inspect(js, {
+const inp = (process.argv.length < 3) ?
+  fs.readFileSync(0, 'utf8') :
+  process.argv[2];
+const colors = process.stdout.isTTY;
+
+const bytes = parseEDN(inp);
+console.log('bytes:', u8toHex(bytes));
+console.log(comment(bytes));
+
+const js = decode(bytes);
+console.log('js:', util.inspect(js, {
   depth: Infinity,
-  colors: process.stdout.isTTY,
+  colors,
 }));
-const bytes = encode(js);
-console.log(u8toHex(bytes));
-console.log(diagnose(bytes));
+console.log(
+  'diagonstic recreated from js:',
+  util.inspect(diagnose(bytes), {colors})
+);

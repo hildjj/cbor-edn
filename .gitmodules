@@ -1,0 +1,3 @@
+[submodule "edn-abnf"]
+	path = edn-abnf
+	url = https://github.com/cabo/edn-abnf.git

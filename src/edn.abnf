@@ -9,16 +9,17 @@ string1e        = string1 / ellipsis
 ellipsis        = 3*"." ; "..." or more dots
 string          = string1e *(S "+" S string1e)
 
-number          = (basenumber / decnumber / infin) spec
+number          = (hexfloat / hexint / octint / binint
+                   / decnumber / nonfin) spec
 sign            = "+" / "-"
 decnumber       = [sign] (1*DIGIT ["." *DIGIT] / "." 1*DIGIT)
                          ["e" [sign] 1*DIGIT]
-basenumber      = [sign] "0" ("x" 1*HEXDIG
-                              [["." *HEXDIG] "p" [sign] 1*DIGIT]
-                            / "x" "." 1*HEXDIG "p" [sign] 1*DIGIT
-                            / "o" 1*ODIGIT
-                            / "b" 1*BDIGIT)
-infin           = %s"Infinity"
+hexfloat        = [sign] "0x" (1*HEXDIG ["." *HEXDIG] / "." 1*HEXDIG)
+                         "p" [sign] 1*DIGIT
+hexint          = [sign] "0x" 1*HEXDIG
+octint          = [sign] "0o" 1*ODIGIT
+binint          = [sign] "0b" 1*BDIGIT
+nonfin          = %s"Infinity"
                 / %s"-Infinity"
                 / %s"NaN"
 simple          = %s"false"

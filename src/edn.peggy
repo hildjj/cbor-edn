@@ -3,52 +3,94 @@ import {
   encode, encodedNumber, getEncoded, saveEncodedLength, Simple, Tag
 } from 'cbor2';
 import {base64UrlToBytes, hexToU8, u8concat, u8toHex} from 'cbor2/utils';
+import {Writer} from 'cbor2/writer';
+import {ByteTree} from './byteTree.js';
+
+const ELLIPSE_TAG = 888;
+const CUSTOM_APP_TAG = 999;
+const FALSE = encode(false);
+const TRUE = encode(true);
+const UNDEFINED = encode(undefined);
+const NULL = encode(null);
+const TE = new TextEncoder();
+
+const MT = {
+  POS_INT: 0,
+  NEG_INT: 1,
+  BYTE_STRING: 2,
+  UTF8_STRING: 3,
+  ARRAY: 4,
+  MAP: 5,
+  TAG: 6,
+  SIMPLE_FLOAT: 7,
+};
 
 function deHex(str) {
   return String.fromCodePoint(parseInt(str, 16));
 }
 
-function specBox(n, spec, mt = 0, float=false) {
-  if (spec == null) {
-    return n;
-  }
-  if (float) {
+function specBox(n, spec, mt = 0) {
+  let num = null;
+
+  if ('float' in n) {
+    // Ignore mt
     switch (spec) {
+      case null:
+      case undefined:
+        return encode(n.float, {avoidInts: true}); // Force preferred float
       case '1':
-        return encodedNumber(n, 'f16');
+        num = encodedNumber(n.float, 'f16');
+        break;
       case '2':
-        return encodedNumber(n, 'f32');
+        num = encodedNumber(n.float, 'f32');
+        break;
       case '3':
-        return encodedNumber(n, 'f64');
+        num = encodedNumber(n.float, 'f64');
+        break;
       default:
-        error(`Invalid float spec: _${spec}`);
+        throw new Error(`Invalid float spec: _${spec}`);
     }
   } else {
     switch (spec) {
+      case null:
+      case undefined:
+        num = encodedNumber(n.int, 'i', mt);
+        break;
+      case '':
+        return new Uint8Array([0x7f]);
       case 'i':
-        return encodedNumber(n, 'i0', mt);
+        num = encodedNumber(n.int, 'i0', mt);
+        break;
       case '0':
-        return encodedNumber(n, 'i8', mt);
+        num = encodedNumber(n.int, 'i8', mt);
+        break;
       case '1':
-        return encodedNumber(n, 'i16', mt);
+        num = encodedNumber(n.int, 'i16', mt);
+        break;
       case '2':
-        return encodedNumber(n, 'i32', mt);
+        num = encodedNumber(n.int, 'i32', mt);
+        break;
       case '3':
-        return encodedNumber(n, 'i64', mt);
+        num = encodedNumber(n.int, 'i64', mt);
+        break;
       default:
-        error(`Invalid integer spec: _${spec}`);
+        throw new Error(`Invalid integer spec: _${spec} for ${JSON.stringify(n)}`);
     }
   }
+  return getEncoded(num);
 }
+
 }}
 
 seq
-  = S items:(first:item S rest:(OC @item S)* OC { return [first, ...rest]; })? {
-    return items ?? [];
+  = S items:(first:item S rest:(OC @item S)* OC { return new ByteTree(first, rest).bytes() })? {
+    return items ?? new Uint8Array(0);
   }
 
 one_item
-  = S @item S
+  = S item:item S {
+    return new ByteTree(item).bytes();
+  }
 
 S
   = blank* (comment blank*)*
@@ -78,64 +120,145 @@ comment
 map
   = "{" spec:spec S entries:(first:kp S rest:(OC @kp S)* OC { return [first, ...rest] })? "}" {
     const ents = entries ?? [];
-    const obj = (options.decodeOptions.preferMap || ents.every(([k]) => typeof k === 'string')) ?
-      Object.fromEntries(ents) :
-      new Map(ents);
-    if (spec) {
-      const len = specBox(ents.length, spec, 5);
-      saveEncodedLength(obj, getEncoded(len));
-    }
-    return obj;
+    return new ByteTree(specBox({int: ents.length}, spec, MT.MAP), ents);
   }
 
 array
   = "[" spec:spec S items:(first:item S rest:(OC @item S)* OC { return [first, ...rest]; })? "]" {
-    const a = items ?? [];
-    if (spec) {
-      const len = specBox(a.length, spec, 4);
-      saveEncodedLength(a, getEncoded(len));
-    }
-    return a;
+    const ents = items ?? [];
+    return new ByteTree(specBox({int: ents.length}, spec, MT.ARRAY), ents);
   }
 
 tagged
   = n:uint spec:spec "(" S item:item S ")" {
-    const tag = new Tag(specBox(n, spec, 6), item);
-    return tag.decode(options.decodeOptions);
+    return new ByteTree(
+      specBox({int: n}, spec, MT.TAG),
+      item
+    );
   }
 
 number
-  = n:(basenumber / decnumber / infin) spec:spec {
-    return specBox(n, spec, 0, text().includes('.'));
+  = n:(hexfloat / hexint / octint / binint / decnumber / nonfin) spec:spec {
+    return specBox(n, spec);
   }
 
 simple
-  = "false" { return false }
-  / "true" { return true }
-  / "null" { return null }
-  / "undefined" { return undefined }
-  / "simple(" S i:item S ")" { return new Simple(i); } // TODO: Add .decode()
+  = "false" { return FALSE }
+  / "true" { return TRUE }
+  / "null" { return NULL }
+  / "undefined" { return UNDEFINED }
+  / "simple(" S i:(hexint / octint / binint / decnumber ) S ")" {
+    if (!('int' in i)) {
+      error(`Expected int in simple, got: "${JSON.stringify(i)}"`);
+    }
+    if (i.int < 0 || i.int > 255) {
+      error(`Simple value must be between 0 and 255, inclusive, got ${i.int}`);
+    }
+    return encode(new Simple(i.int));
+  }
 
 string
   = s:string1e|1.., S "+" S| {
-    if (s.every(str => typeof str === 'string')) {
-      return s.reduce((t, v) => t + v, '');
-    }
-    if (s.every(buf => buf instanceof Uint8Array)) {
-      return u8concat(s);
-    }
-    if (s.every(other => other.prefix === s[0].prefix)) {
-      return {
-        ...s[0],
-        str: s.reduce((t, v) => t + v.str, ''),
+    // s can have {mt, spec, str} or ByteTree (if ...)
+    // If s is unknown app-string, it will be mt -1.
+    // Coalesce adjacent items of the same type
+    const ret = [s[0]]; // Uint8Array changed to {mt:2,str}
+    let elided = s[0] instanceof ByteTree;
+    let mode = elided ? -2 : (s[0].mt ?? 2);
+    for (let i = 1; i < s.length; i++) {
+      if (s[i] instanceof ByteTree) {
+        elided = true;
+        ret.push(s[i]);
+      } else if (s[i].mt === -1) {
+        if ((mode !== -1) && (ret[ret.length-1] instanceof ByteTree)) {
+          ret.push(s[i]);
+          mode = -1
+        } else {
+          throw new Error('Cannot concat custom app-string');
+        }
+      } else if (s[i].mt === 3) {
+        if ((mode !== -2) && (mode !== 3)) {
+          throw new Error('Invalid concat, str in non-str mode');
+        }
+        mode = 3;
+        if (ret[ret.length-1] instanceof ByteTree) {
+          ret.push(s[i]);
+        } else {
+          ret[ret.length-1].str = u8concat([ret[ret.length-1].str, s[i].str]);
+        }
+      } else {
+        // Can always add bytes.  Yes, there's supposed to be valid UTF-8
+        mode = 2;
+        if (ret[ret.length-1] instanceof ByteTree) {
+          ret.push(s[i]);
+        } else {
+          ret[ret.length-1].str = u8concat([ret[ret.length-1].str, s[i].str]);
+        }
       }
     }
-    return s;
+    if (elided) {
+      if (ret.length === 1) {
+        // Only ...
+        return ret[0];
+      }
+      return new ByteTree(
+        specBox({int: ELLIPSE_TAG}, null, MT.TAG),
+        specBox({int: ret.length}, null, MT.ARRAY),
+        ret.map(x => {
+          if (x instanceof ByteTree) {
+            return x;
+          }
+          if (mode === -1) {
+            // Must be the custom app-string
+            return new ByteTree(
+              specBox({int: CUSTOM_APP_TAG}, null, MT.TAG),
+              specBox({int: 2}, null, 4),
+              specBox({int: x.prefix.length}, null, MT.UTF8_STRING),
+              x.prefix,
+              specBox({int: x.str.length}, null, MT.UTF8_STRING),
+              x.str
+            );
+          }
+          console.log({mode})
+          return new ByteTree(
+            specBox({int: x.str.length}, x.spec, mode),
+            x.str,
+          );
+        })
+      );
+    }
+
+    // If not elided, we'll have exactly one entry.
+    const x = ret[0];
+    if (mode === -1) {
+      return new ByteTree(
+        specBox({int: CUSTOM_APP_TAG}, null, MT.TAG),
+        specBox({int: 2}, null, MT.ARRAY),
+        specBox({int: x.prefix.length}, null, MT.UTF8_STRING),
+        x.prefix,
+        specBox({int: x.str.length}, null, MT.UTF8_STRING),
+        x.str
+      );
+    }
+
+    const bt = new ByteTree(
+      specBox({int: x.str.length}, x.spec, mode),
+      x.str
+    );
+    if (x.spec === '') {
+      bt.push(new Uint8Array([0xff]));
+    }
+    return bt;
   }
 
 streamstring
   = "(_" S first:string S next:(OC @string S)* OC ")" {
-    return [first, ...next].reduce((t, v) => t + v, '');
+    return new ByteTree(
+      new Uint8Array([0x7f]),
+      first,
+      next,
+      new Uint8Array([0xff])
+    )
   }
 
 non_slash
@@ -156,68 +279,65 @@ spec
   = ("_" @$wordchar*)?
 
 kp
-  = @item S ":" S @item
+  = key:item S ":" S value:item {
+    return new ByteTree(key, value);
+  }
 
 uint
-  = "0"
+  = "0" { return 0 }
   / n:$(DIGIT1 DIGIT*) { return parseInt(n, 10); }
 
-basenumber
-  = hexnumber
-  / octnumber
-  / binnumber
-
-hexnumber
-  = sign:sig_mult? "0" "x"i mantInt:$HEXDIG+ suf:(frac:("." @HEXDIG*)? "p"i p:sdigits { return {frac, p} })? {
-    let n = parseInt(mantInt, 16);
-    if (suf) {
-      const pow = suf.p ** 2;
-      n *= pow;
-      if (suf.frac) {
-        for (let i = 0; i < suf.frac.length; i++) {
-          n += parseInt(suf.frac[i], 16) * (pow / (16 ** (i + 1)))
-        }
-      }
+hexfloat
+  = sign:sign? "0x"i mant:($HEXDIG+ ("." @HEXDIG*)? / "." HEXDIG+) "p"i exp:$(sign? DIGIT+) {
+    let [int, frac] = mant;
+    if (int === '.') { // 0x.4p0
+      int = '0'
     }
-    if (typeof sign === 'number') {
-      return sign * n;
+    if (frac == null) { // 0x4p0
+      frac = [];
     }
-    return n;
-  }
-  / sign:sig_mult? "0" "x"i "." frac:HEXDIG+ "p"i p:sdigits {
-    let n = 0;
-    const pow = 2 ** p;
+    const pow = parseInt(exp, 10) ** 2;
+    let float = parseInt(int, 16) * pow;
     for (let i = 0; i < frac.length; i++) {
-      n += parseInt(frac[i], 16) * (pow / (16 ** (i + 1)));
+      float += parseInt(frac[i], 16) * (pow / (16 ** (i + 1)))
     }
-    if (typeof sign === 'number') {
-      return sign * n;
+    if (sign === '-') {
+      float *= -1;
     }
-    return n;
+    return {float};
   }
 
-sdigits
-  = n:$(sign? DIGIT+) { return parseInt(n) }
-
-octnumber
-  = n:(@sign? "0" "o"i @ODIGIT+) {
-    return parseInt(n.flat().join(''), 8);
+hexint
+  = sign:sign? "0x"i dig:$HEXDIG+ {
+    return {int: parseInt(`${sign || ''}${dig}`, 16)};
   }
 
-binnumber
-  = n:(@sign? "0" "b"i @BDIGIT+) {
-    return parseInt(n.flat().join(''), 2);
+octint
+  = sign:sign? "0o"i dig:$ODIGIT+ {
+    return {int: parseInt(`${sign || ''}${dig}`, 8)};
+  }
+
+binint
+  = sign:sign? "0b"i dig:$BDIGIT+ {
+    return {int: parseInt(`${sign || ''}${dig}`, 2)};
   }
 
 decnumber
   = n:$(sign? (DIGIT+ ("." DIGIT*)? / "." DIGIT+) ("e"i sign? DIGIT+)?) {
-    return parseFloat(n);
+    if (/[\.e]/.test(n) || n === '-0') {
+      return {float: parseFloat(n)};
+    }
+    const b = BigInt(n);
+    if (b <= Number.MAX_SAFE_INTEGER && b >= Number.MIN_SAFE_INTEGER) {
+      return {int: Number(b)};
+    }
+    return {int: b};
   }
 
-infin
-  = "Infinity" { return Infinity }
-  / "-Infinity" { return -Infinity }
-  / "NaN" { return NaN }
+nonfin
+  = "Infinity" { return {float: Infinity}; }
+  / "-Infinity" { return {float: -Infinity}; }
+  / "NaN" { return {float: NaN};  }
 
 string1e
   = string1
@@ -238,10 +358,6 @@ sign
   = "+"
   / "-"
 
-sig_mult
-  = "+" { return 1 }
-  / "-" { return -1 }
-
 HEXDIG
   = DIGIT
   / "A"i
@@ -258,21 +374,21 @@ BDIGIT
   = [\x30-\x31]
 
 string1
-  = str:(tstr / bstr) spec:spec {
-    if (spec) {
-      let mt = 2;
-      if (typeof str === 'string') {
-        str = Object(str);
-        mt = 3;
-      }
-      const len = specBox(str.length, spec, mt);
-      saveEncodedLength(str, getEncoded(len));
+  = str:tstr spec:spec {
+      return {mt: 3, spec, str: TE.encode(str)}
     }
-    return str;
-  }
+  / str:bstr spec:spec {
+      str.spec = spec;
+      return str;
+    }
 
 ellipsis
-  = $"."|3..|
+  = "."|3..| {
+    return new ByteTree(
+      specBox({int: ELLIPSE_TAG}, null, MT.TAG),
+      NULL
+    );
+  }
 
 lcalnum
   = lcalpha
@@ -286,8 +402,8 @@ tstr
 
 bstr
   = app_string
-  / sqstr
-  / embedded
+  / s:sqstr { return {mt: 2, str: TE.encode(s)}; }
+  / str:embedded { return {mt: 2, str}; }
 
 lcalpha
   = [\x61-\x7a]
@@ -305,11 +421,11 @@ app_string
   = prefix:app_prefix str:sqstr {
     switch (prefix) {
     case 'h':
-      return hexToU8(str);
+      return {mt: 2, str: hexToU8(str)};
     case 'b64':
-      return base64UrlToBytes(str);
+      return {bt: 2, str: base64UrlToBytes(str)};
     default:
-      return {type: 'app-string', prefix, str}
+      return {mt: -1, prefix: TE.encode(prefix), str: TE.encode(str)}
     }
   }
 
@@ -317,10 +433,7 @@ sqstr
   = "'" sq:single_quoted* "'" { return sq.join('') }
 
 embedded
-  = "<<" seq:seq ">>" {
-    const bytes = seq.map(b => encode(b));
-    return u8concat(bytes);
-  }
+  = "<<" @seq ">>"
 
 unescaped
   = "\n"
@@ -379,11 +492,6 @@ low_surrogate
 
 HEXDIG1
   = DIGIT1
-  / "A"i
-  / "B"i
-  / "C"i
-  / "D"i
-  / "E"i
-  / "F"i
+  / [A-F]i
 
 EOF = !.
