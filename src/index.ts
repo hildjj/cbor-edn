@@ -1,17 +1,18 @@
 import {
-  type DecodeOptions,
-  type EncodeOptions,
-  defaultDecodeOptions,
-  defaultEncodeOptions,
-} from 'cbor2';
+  type GrammarSource,
+  type StartRuleNames,
+  type SyntaxError,
+  parse,
+
 // eslint-disable-next-line n/no-missing-import
-import {type SyntaxError, parse} from '../lib/edn.js';
+} from '../lib/edn.js';
 
 const source = 'parseEDN';
 
 export interface EDNoptions {
-  decodeOptions: DecodeOptions;
-  encodeOptions: EncodeOptions;
+  [key: string]: unknown;
+  startRule?: StartRuleNames;
+  grammarSource?: GrammarSource;
 }
 
 /**
@@ -24,17 +25,16 @@ export interface EDNoptions {
  */
 export function parseEDN(
   edn: string,
-  opts: EDNoptions = {
-    decodeOptions: defaultDecodeOptions,
-    encodeOptions: defaultEncodeOptions,
-  }
+  opts: EDNoptions
 ): unknown {
+  opts = {
+    startRule: 'one_item',
+    grammarSource: 'parseEDN',
+    ...opts,
+  };
+
   try {
-    return parse(edn, {
-      startRule: 'one_item',
-      grammarSource: source,
-      ...opts,
-    });
+    return parse(edn, opts);
   } catch (e) {
     const ef = e as SyntaxError;
     if (typeof ef.format === 'function') {

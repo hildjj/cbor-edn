@@ -26,10 +26,10 @@ test('ByteTree', () => {
 
   assert.equal(
     bt.toString(),
-    'ByteTree(13)[ByteTree(6)[ByteTree(2)[1,2],3,4,ByteTree(2)[1,2]],ByteTree(6)[ByteTree(2)[1,2],3,4,ByteTree(2)[1,2]],255]'
+    'ByteTree(13)[ByteTree(6)[ByteTree(2)[0x0102], 0x0304, ByteTree(2)[0x0102]],ByteTree(6)[ByteTree(2)[0x0102], 0x0304, ByteTree(2)[0x0102]], 0xff]'
   );
   assert.equal(
     util.inspect(bt),
-    'ByteTree(13)[ByteTree(6)[ByteTree(2)[1,2],3,4,ByteTree(2)[1,2]],ByteTree(6)[ByteTree(2)[1,2],3,4,ByteTree(2)[1,2]],255]'
+    'ByteTree(13)[ByteTree(6)[ByteTree(2)[0x0102], 0x0304, ByteTree(2)[0x0102]],ByteTree(6)[ByteTree(2)[0x0102], 0x0304, ByteTree(2)[0x0102]], 0xff]'
   );
 });
