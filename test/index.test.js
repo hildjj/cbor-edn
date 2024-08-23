@@ -123,12 +123,18 @@ test('index', () => {
     ["... + zzz'foo'", 'd9037882d90378f6d903e782637a7a7a63666f6f'],
     ['18014398509481984', '1b0040000000000000'],
   ]) {
-    const bytes = parseEDN(str);
-    assert.deepEqual(
-      bytes,
-      hexToU8(expected),
-      `${str} => ${u8toHex(bytes)} != ${expected}`
-    );
+    try {
+      const bytes = parseEDN(str);
+      assert.deepEqual(
+        bytes,
+        hexToU8(expected),
+        `${str} => ${u8toHex(bytes)} != ${expected}`
+      );
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.log('ERROR', expected);
+      throw e;
+    }
   }
 });
 

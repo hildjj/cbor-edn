@@ -57,38 +57,46 @@ function decodeU8(obj) {
   return obj;
 }
 
-for (const inp of inputs) {
-  const bytes = parseEDN(inp, {
-    startRule: opts.values.startRule,
-  });
-  if (bytes instanceof Uint8Array) {
-    console.log('bytes:', u8toHex(bytes));
-    console.log(comment(bytes));
+try {
+  for (const inp of inputs) {
+    const bytes = parseEDN(inp, {
+      startRule: opts.values.startRule,
+    });
+    if (bytes instanceof Uint8Array) {
+      console.log('bytes:', u8toHex(bytes));
+      console.log(comment(bytes));
 
-    const js = decode(bytes);
-    console.log('js:', util.inspect(js, {
-      depth: Infinity,
-      colors,
-    }));
-    let diagnosticSizes = DiagnosticSizes.PREFERRED;
-    if (opts.values.never) {
-      diagnosticSizes = DiagnosticSizes.NEVER;
-    }
-    if (opts.values.always) {
-      diagnosticSizes = DiagnosticSizes.ALWAYS;
-    }
+      const js = decode(bytes);
+      console.log('js:', util.inspect(js, {
+        depth: Infinity,
+        colors,
+      }));
+      let diagnosticSizes = DiagnosticSizes.PREFERRED;
+      if (opts.values.never) {
+        diagnosticSizes = DiagnosticSizes.NEVER;
+      }
+      if (opts.values.always) {
+        diagnosticSizes = DiagnosticSizes.ALWAYS;
+      }
 
-    console.log(
-      'diagonstic recreated from js:',
-      util.inspect(diagnose(bytes, {
-        diagnosticSizes,
-      }), {colors})
-    );
-  } else {
-    console.log('js:', util.inspect(decodeU8(bytes), {
-      depth: Infinity,
-      colors,
-    }));
+      console.log(
+        'diagonstic recreated from js:',
+        util.inspect(diagnose(bytes, {
+          diagnosticSizes,
+        }), {colors})
+      );
+    } else {
+      console.log('js:', util.inspect(decodeU8(bytes), {
+        depth: Infinity,
+        colors,
+      }));
+    }
+    console.log();
   }
-  console.log();
+} catch (e) {
+  if (typeof e.format === 'function') {
+    console.log(e.message);
+  } else {
+    throw e;
+  }
 }
