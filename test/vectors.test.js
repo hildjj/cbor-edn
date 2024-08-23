@@ -6,6 +6,10 @@ import {parseEDN} from '../lib/index.js';
 // eslint-disable-next-line n/no-unsupported-features/node-builtins
 import {test} from 'node:test';
 
+const TD = new TextDecoder('utf-8', {
+  fatal: true,
+});
+
 test('vectors', () => {
   const vfile = new URL('../edn-abnf/tests/basic.csv', import.meta.url);
 
@@ -19,6 +23,10 @@ test('vectors', () => {
       .on('error', reject)
       .on('data', ([op, orig, expected]) => {
         try {
+          const obytes = orig.match(/^h\](?<hex>[0-9a-f]+)/i);
+          if (obytes) {
+            orig = TD.decode(hexToU8(obytes.groups.hex));
+          }
           switch (op) {
             case '=': {
               const bytesOrig = parseEDN(orig);
