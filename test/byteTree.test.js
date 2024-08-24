@@ -32,4 +32,9 @@ test('ByteTree', () => {
     util.inspect(bt),
     'ByteTree(13)[ByteTree(6)[ByteTree(2)[0x0102], 0x0304, ByteTree(2)[0x0102]],ByteTree(6)[ByteTree(2)[0x0102], 0x0304, ByteTree(2)[0x0102]], 0xff]'
   );
+
+  assert.throws(() => {
+    const b = new ByteTree('foo');
+    b.bytes();
+  });
 });

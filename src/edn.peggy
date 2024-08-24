@@ -6,7 +6,10 @@ import {
   CUSTOM_APP_TAG, ELLIPSE_TAG, IPV4_TAG, IPV6_TAG, MT
 } from './constants.js';
 import {numToBytes} from './spec.js';
-import {combineStrings, encodeDate} from './string.js';
+import {
+  combineStrings, encodeDate, encodeHex, encodeIP, encodeIPv6
+} from './string.js';
+import {hexFloat} from './float.js';
 
 const FALSE = encode(false);
 const TRUE = encode(true);
@@ -91,21 +94,7 @@ decnumber
 hexfloat
   = sign:sign? "0x"i mant:($HEXDIG+ ("." @HEXDIG*)? / "." HEXDIG+) "p"i exp:$(sign? DIGIT+) {
     let [int, frac] = mant;
-    if (int === '.') { // 0x.4p0
-      int = '0'
-    }
-    if (frac == null) { // 0x4p0
-      frac = [];
-    }
-    const pow = 2 ** parseInt(exp, 10);
-    let float = parseInt(int, 16) * pow;
-    for (let i = 0; i < frac.length; i++) {
-      float += parseInt(frac[i], 16) * (pow / (16 ** (i + 1)))
-    }
-    if (sign === '-') {
-      float *= -1;
-    }
-    return {float};
+    return hexFloat(sign, int, frac, exp);
   }
 
 hexint
@@ -186,39 +175,18 @@ invalid_app_str
 
 // app-string h
 h
-  = "h" SQUOTE @inside_h SQUOTE
-
-inside_h
-  = valid_h
-  / invalid_app_str
+  = "h" SQUOTE @valid_h SQUOTE
+  / "h" SQUOTE invalid_app_str SQUOTE
 
 valid_h
-  = SQS str:(@(hex_byte / ellipsis) SQS)* &SQUOTE {
-    if (str.length === 0) {
-      return {mt: MT.BYTE_STRING, str: new Uint8Array()}
-    }
-    return str.reduce((t, v) => {
-      if (t.length) {
-        if ((typeof v === 'string') && (typeof t[t.length-1] === 'string')) {
-          t[t.length-1] += v;
-          return t;
-        } else if (v instanceof ByteTree && t[t.length-1] instanceof ByteTree) {
-          // Coalesce ... ...
-          return t;
-        }
-      }
-      t.push(v);
-      return t;
-    }, []).map(v => (typeof v === 'string') ? {mt: MT.BYTE_STRING, str: hexToU8(v)} : v);
+  = SQS str:(@(hex_byte / ellipsis) SQS)* {
+    return encodeHex(str);
   }
 
 // app-string b64
 b64
-  = "b64" SQUOTE @inside_b64 SQUOTE
-
-inside_b64
-  = valid_b64
-  / invalid_app_str
+  = "b64" SQUOTE @valid_b64 SQUOTE
+  / "b64" SQUOTE @invalid_app_str SQUOTE
 
 valid_b64
   = B b64:(b64_4* (b64_3 / b64_2)?) {
@@ -250,19 +218,19 @@ iblank
 
 // app-string dt
 dt
-  = "dt" SQUOTE dt:inside_dt SQUOTE {
+  = "dt" SQUOTE dt:date_time SQUOTE {
       return {mt: MT.ENCODED_BYTES, str: encodeDate(dt)};
     }
-  / "DT" SQUOTE dt:inside_dt SQUOTE {
-      return {mt: MT.ENCODED_BYTES, str: new ByteTree(
-        numToBytes({int: 1}, null, MT.TAG),
-        encodeDate(dt)
-      )}
+  / "DT" SQUOTE dt:date_time SQUOTE {
+      return {
+        mt: MT.ENCODED_BYTES,
+        str: new ByteTree(
+          numToBytes({int: 1}, null, MT.TAG),
+          encodeDate(dt)
+        ),
+      }
     }
-
-inside_dt
-  = date_time
-  / invalid_app_str
+  / ("dt" / "DT") SQUOTE invalid_app_str SQUOTE
 
 full_date
   = date_fullyear "-" date_month "-" date_mday
@@ -306,61 +274,23 @@ partial_time
 
 // app-string ip
 ip
-  = typ:("ip" / "IP") SQUOTE inside:inside_ip SQUOTE {
-    if (typ === 'ip') {
-      return inside;
+  = typ:("ip" / "IP") SQUOTE inside:valid_ip SQUOTE {
+      if (typ === 'ip') {
+        return inside;
+      }
+      return {
+        mt: MT.ENCODED_BYTES,
+        str: new ByteTree(
+          numToBytes({int: (inside.v == 4) ? IPV4_TAG : IPV6_TAG}, null, MT.TAG),
+          inside.str,
+        ),
+      };
     }
-    return {
-      mt: MT.ENCODED_BYTES,
-      str: new ByteTree(
-        numToBytes({int: (inside.v == 4) ? IPV4_TAG : IPV6_TAG}, null, MT.TAG),
-        inside.str,
-      ),
-    };
-  }
-
-inside_ip
-  = valid_ip
-  / invalid_app_str
+  / ("ip" / "IP") SQUOTE invalid_app_str SQUOTE
 
 valid_ip
   = addr:IPaddress mask:("/" @uint)? {
-    // Got: {bytes, v}
-    if (mask) {
-      // Trim length of bytes to mask bits
-      const numBytes = Math.ceil(mask / 8);
-      let bytes = addr.bytes.slice(0, numBytes);
-      const lastByte = bytes[bytes.length - 1];
-      if (lastByte !== 0) {
-        const numBits = mask % 8;
-        if (numBits) {
-          bytes[bytes.length - 1] = (lastByte >> numBits) << numBits;
-        }
-      }
-      let count = bytes.length;
-      for (let i = bytes.length - 1; i >= 0; i--) {
-        if (bytes[i] === 0) {
-          count = i;
-        } else {
-          break;
-        }
-      }
-      bytes = bytes.slice(0, count);
-
-      return {
-        mt: MT.ENCODED_BYTES,
-        str: encode([mask, bytes]),
-        v: addr.v,
-      }
-    }
-    return {
-      mt: MT.ENCODED_BYTES,
-      str: new ByteTree(
-        numToBytes({int: addr.bytes.length}, null, MT.BYTE_STRING),
-        addr.bytes,
-      ),
-      v: addr.v,
-    }
+    return encodeIP(addr, mask);
   }
 
 IPaddress
@@ -378,26 +308,7 @@ IPv6address
   / (h16 (":" h16)|..4|)? "::" ls32
   / (h16 (":" h16)|..5|)? "::" h16
   / (h16 (":" h16)|..6|)? "::") {
-    const bf = bytes
-      .flat(Infinity)
-      .filter(b => b && (b != ':'))
-      .map(b => ((typeof b !== 'string') && ('str' in b)) ? b.str : b);
-    let cc = -1;
-    const bc = bf.reduce((t, v, i) => {
-      if (v instanceof Uint8Array) {
-        t += v.length;
-      } else {
-        cc = i;
-      }
-      return t;
-    }, 0);
-    if (cc >= 0) {
-      bf[cc] = hexToU8(''.padStart((16 - bc) * 2, '0'))
-    }
-    return {
-      bytes: u8concat(bf),
-      v: 6,
-    };
+    return encodeIPv6(bytes.flat(Infinity).filter(b => b && (b != ':')));
   }
 
 h16

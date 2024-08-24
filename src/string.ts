@@ -1,8 +1,8 @@
 import {CUSTOM_APP_TAG, ELLIPSE_TAG, MT} from './constants.js';
 import {Tag, encode} from 'cbor2';
+import {hexToU8, u8concat} from 'cbor2/utils';
 import {ByteTree} from './byteTree.js';
 import {numToBytes} from './spec.js';
-import {u8concat} from 'cbor2/utils';
 
 const TD = new TextDecoder('utf-8', {
   fatal: true,
@@ -13,6 +13,7 @@ export interface StringChunk {
   str: Uint8Array;
   spec?: string;
   prefix?: Uint8Array;
+  v?: 4 | 6; // Only used for IP addresses
 }
 
 export type ChunkOrEllipsis
@@ -161,4 +162,122 @@ export function encodeDate(dt: string): Uint8Array {
     return numToBytes({int: tm});
   }
   return numToBytes({float: tm});
+}
+
+/**
+ * Coalesce all valid bytes together into chunks, and all adjacent ellipses
+ * into a single ellipsis.
+ *
+ * @param str Chunks.
+ * @returns Coalesced array.
+ */
+export function encodeHex(
+  str: (string | ByteTree)[]
+): (StringChunk | ByteTree)[] {
+  // SQS str:(@(hex_byte / ellipsis) SQS)*
+  if (str.length === 0) {
+    return [{mt: MT.BYTE_STRING, str: new Uint8Array()}];
+  }
+  const bytesAndEllipses = str.reduce<(string | ByteTree)[]>((t, v) => {
+    if (t.length) {
+      const last = t[t.length - 1];
+      if ((typeof v === 'string') && (typeof last === 'string')) {
+        t[t.length - 1] += v;
+        return t;
+      } else if ((v instanceof ByteTree) && (last instanceof ByteTree)) {
+        // E.g. h'... ...'
+        return t;
+      }
+    }
+    t.push(v);
+    return t;
+  }, []);
+
+  return bytesAndEllipses.map(
+    v => (
+      (typeof v === 'string') ?
+        {mt: MT.BYTE_STRING, str: hexToU8(v)} :
+        v
+    )
+  );
+}
+
+export interface IPbytes {
+  bytes: Uint8Array;
+  v: 4 | 6;
+}
+
+/**
+ * Given an IPv4 or IPv6 address, possible with a mask, trim the address
+ * if needed.
+ *
+ * @param addr IP address.
+ * @param mask If provided, number of bits to mask.
+ * @returns Chunk with either the address or [mask, address] pre-encoded,
+ *   as well as v set.
+ */
+export function encodeIP(addr: IPbytes, mask?: number | null): StringChunk {
+  if (mask) {
+    // Trim length of bytes to mask bits
+    const numBytes = Math.ceil(mask / 8);
+    let bytes = addr.bytes.slice(0, numBytes);
+    const lastByte = bytes[bytes.length - 1];
+    if (lastByte !== 0) {
+      const numBits = mask % 8;
+      if (numBits) {
+        bytes[bytes.length - 1] = (lastByte >> numBits) << numBits;
+      }
+    }
+    let count = bytes.length;
+    for (let i = bytes.length - 1; i >= 0; i--) {
+      if (bytes[i] === 0) {
+        count = i;
+      } else {
+        break;
+      }
+    }
+    bytes = bytes.slice(0, count);
+
+    return {
+      mt: MT.ENCODED_BYTES,
+      str: encode([mask, bytes]),
+      v: addr.v,
+    };
+  }
+  return {
+    mt: MT.ENCODED_BYTES,
+    str: encode(addr.bytes),
+    v: addr.v,
+  };
+}
+
+/**
+ * Convert the parsed version of an IPv6 address into a single buffer.
+ *
+ * @param bytes Array of '::', bytes as Uint8Array, or an IPv6 address as
+ *   IPbytes.
+ * @returns IPbytes with v:6.
+ */
+export function encodeIPv6(bytes: (string | Uint8Array | IPbytes)[]): IPbytes {
+  const bf = bytes.map(
+    b => (((typeof b !== 'string') && ('bytes' in b)) ? b.bytes : b)
+  );
+
+  // Position of the ::
+  let cc = -1;
+  const byteCount = bf.reduce((t, v, i) => {
+    if (v instanceof Uint8Array) {
+      t += v.length;
+    } else {
+      cc = i;
+    }
+    return t;
+  }, 0);
+  if (cc >= 0) {
+    bf[cc] = hexToU8(''.padStart((16 - byteCount) * 2, '0'));
+  }
+  return {
+    bytes: u8concat(bf as Uint8Array[]),
+    v: 6,
+  };
 }

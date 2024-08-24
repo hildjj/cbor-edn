@@ -1,5 +1,6 @@
 import {encode, encodedNumber, getEncoded} from 'cbor2';
 import {MT} from './constants.js';
+import {assert} from './assert.js';
 
 export interface IntNumber {
   int: number;
@@ -72,8 +73,6 @@ export function numToBytes(
   }
 
   const enc = getEncoded(num);
-  if (!enc) {
-    throw new Error('Invalid state: no encoded number');
-  }
+  assert(enc);
   return enc;
 }
