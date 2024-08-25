@@ -7,7 +7,7 @@ import {
 } from './constants.js';
 import {numToBytes} from './spec.js';
 import {
-  combineStrings, encodeDate, encodeHex, encodeIP, encodeIPv6
+  combineStrings, encodeDate, encodeHex, encodeIP, encodeIPv6, parseAppString
 } from './string.js';
 import {hexFloat} from './float.js';
 
@@ -22,6 +22,29 @@ function deHex(str) {
   return String.fromCodePoint(parseInt(str, 16));
 }
 }}
+
+{
+function callRule(rule, start, end, er) {
+  const r = peg$startRuleFunctions[rule];
+  if (!r) {
+    throw new Error(`Invalid start rule "${rule}"`);
+  }
+  // Peggy internals.  Don't do this yourself.
+  const oldPos = peg$currPos;
+  const oldInput = input;
+  peg$currPos = start;
+  peg$savedPos = start;
+  input = input.slice(0, end);
+  let s0 = r();
+  if ((s0 === peg$FAILED) || (peg$currPos !== end)) {
+    peg$currPos = end;
+    error(er);
+  }
+  input = oldInput;
+  peg$currPos = oldPos;
+  return s0;
+}
+}
 
 seq
   = S items:(first:item S rest:(OC @item S)* OC {
@@ -144,6 +167,34 @@ tagged
     );
   }
 
+app_string
+  = prefix:app_prefix str:sqstr {
+    const [rule, fun] = parseAppString(prefix, str);
+    let res = fun;
+    if (rule) {
+      let {start, end} = range();
+      start += prefix.length + 1; // After the first SQUOTE
+      end -= 1; // Before the last SQUOTE
+      res = callRule(rule, start, end, `Invalid app-string-${prefix} formatting`);
+      if (fun) {
+        res = fun(prefix, res);
+      }
+    }
+
+    if (res instanceof Uint8Array) {
+      res = {
+        mt: MT.BYTE_STRING,
+        str: res,
+      }
+    } else if (typeof res === 'string')  {
+      res = {
+        mt: MT.UTF8_STRING,
+        str: res,
+      }
+    }
+    return res;
+  }
+
 app_prefix
   = $(lcalpha lcalnum*)
   / $(ucalpha ucalnum*)
@@ -152,56 +203,18 @@ sqstr
   = SQUOTE sq:single_quoted* SQUOTE { return sq.join('') }
 
 bstr
-  = str:embedded { return {mt: MT.BYTE_STRING, str}; }
+  = app_string
   / s:sqstr { return {mt: MT.BYTE_STRING, str: TE.encode(s)}; }
-  / known_app_str
-  / ext_app_str
+  / str:embedded { return {mt: MT.BYTE_STRING, str}; }
 
-ext_app_str
-  = prefix:app_prefix str:sqstr {
-    return {mt: MT.CUSTOM, prefix, str};
-  }
+app_string_h
+  = SQS @(@(hex_byte / ellipsis) SQS)* ("#" sq_non_lf*)?
 
-known_app_str
-  = h
-  / b64
-  / ip
-  / dt
+hex_byte
+  = a:HEXDIG S b:HEXDIG { return a + b }
 
-invalid_app_str
-  = single_quoted* {
-    error("Invalid app-string format");
-  }
-
-// app-string h
-h
-  = "h" SQUOTE @valid_h SQUOTE
-  / "h" SQUOTE invalid_app_str SQUOTE
-
-valid_h
-  = SQS str:(@(hex_byte / ellipsis) SQS)* {
-    return encodeHex(str);
-  }
-
-// app-string b64
-b64
-  = "b64" SQUOTE @valid_b64 SQUOTE
-  / "b64" SQUOTE @invalid_app_str SQUOTE
-
-valid_b64
-  = B b64:(b64_4* (b64_3 / b64_2)?) {
-    const b = b64.flat(Infinity).filter(n => n != null).join('');
-    return {mt: MT.BYTE_STRING, str: base64UrlToBytes(b)};
-  }
-
-b64_4
-  = (@b64dig B)|4|
-
-b64_3
-  = (@b64dig B)|3| "="? B
-
-b64_2
-  = (@b64dig B)|2| ("=" B "=")? B
+app_string_b64
+  = @(B ((b64dig B)|4|)* (b64dig B b64dig B ("=" B "=" / b64dig B "="?)? B)? ("#" @inon_lf*)?)
 
 b64dig
   = ALPHA
@@ -209,37 +222,21 @@ b64dig
   / [_+/-]
 
 B
-  = iblank* (sq_hash_comment iblank*)*
+  = iblank* (icomment iblank*)* { return '' }
 
 iblank
-  = CR
-  / LF
-  / SPACE
+  = [\n ]
 
-// app-string dt
-dt
-  = "dt" SQUOTE dt:date_time SQUOTE {
-      return {mt: MT.ENCODED_BYTES, str: encodeDate(dt)};
-    }
-  / "DT" SQUOTE dt:date_time SQUOTE {
-      return {
-        mt: MT.ENCODED_BYTES,
-        str: new ByteTree(
-          numToBytes({int: 1}, null, MT.TAG),
-          encodeDate(dt)
-        ),
-      }
-    }
-  / ("dt" / "DT") SQUOTE invalid_app_str SQUOTE
+icomment
+  = "#" inon_lf* "\n"
 
-full_date
-  = date_fullyear "-" date_month "-" date_mday
+inon_lf
+  = always_safe { return '' }
+  / ["/\\] { return '' }
+  / "\\" SQUOTE { return '' }
 
-full_time
-  = partial_time time_offset
-
-date_time
-  = $(full_date "T"i full_time)
+app_string_dt
+  = date_time
 
 date_fullyear
   = DIGIT|4|
@@ -272,26 +269,17 @@ time_offset
 partial_time
   = time_hour ":" time_minute ":" time_second time_secfrac?
 
-// app-string ip
-ip
-  = typ:("ip" / "IP") SQUOTE inside:valid_ip SQUOTE {
-      if (typ === 'ip') {
-        return inside;
-      }
-      return {
-        mt: MT.ENCODED_BYTES,
-        str: new ByteTree(
-          numToBytes({int: (inside.v == 4) ? IPV4_TAG : IPV6_TAG}, null, MT.TAG),
-          inside.str,
-        ),
-      };
-    }
-  / ("ip" / "IP") SQUOTE invalid_app_str SQUOTE
+full_date
+  = date_fullyear "-" date_month "-" date_mday
 
-valid_ip
-  = addr:IPaddress mask:("/" @uint)? {
-    return encodeIP(addr, mask);
-  }
+full_time
+  = partial_time time_offset
+
+date_time
+  = $(full_date "T"i full_time)
+
+app_string_ip
+  = IPaddress mask:("/" @uint)?
 
 IPaddress
   = IPv4address
@@ -423,7 +411,7 @@ sq_non_lf
   / hash_escaped
 
 always_safe "plain text"
-  = CR
+  = CR { return '' }
   / [\x20-\x21]
   / [\x23-\x26]
   / [\x28-\x2e]
@@ -468,7 +456,7 @@ single_quoted
   / LF
   / SLASH
   / DQUOTE
-  / "\\" @SQUOTE
+  / "\\" SQUOTE { return "'" }
   / "\\" @escapable
 
 escapable
@@ -557,9 +545,5 @@ wordchar
   = "_"
   / lcalnum
   / ucalpha
-
-// Added in peggy grammar for utility
-hex_byte
-  = a:HEXDIG S b:HEXDIG { return a + b }
 
 EOF = !.

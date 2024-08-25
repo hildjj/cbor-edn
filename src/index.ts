@@ -1,5 +1,7 @@
 import {
   type GrammarSource,
+  type GrammarSourceObject,
+  type Location,
   type StartRuleNames,
   type SyntaxError,
   parse,
@@ -8,6 +10,13 @@ import {
 } from '../lib/edn.js';
 
 const source = 'parseEDN';
+
+export {
+  GrammarSource,
+  GrammarSourceObject,
+  Location,
+  StartRuleNames,
+};
 
 export interface EDNoptions {
   [key: string]: unknown;
@@ -44,3 +53,15 @@ export function parseEDN(
     throw e;
   }
 }
+
+export type {ByteItem, ByteTree} from './byteTree.js';
+
+export {
+  registerAppString,
+  type AppStrFunc,
+  type ChunkTree,
+  type ParsedAppStrFunc,
+  type PossibleResults,
+  type StringChunk,
+  type ChunkOrEllipsis,
+} from './string.js';

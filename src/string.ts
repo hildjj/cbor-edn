@@ -1,6 +1,8 @@
-import {CUSTOM_APP_TAG, ELLIPSE_TAG, MT} from './constants.js';
+import {
+  CUSTOM_APP_TAG, ELLIPSE_TAG, IPV4_TAG, IPV6_TAG, MT,
+} from './constants.js';
 import {Tag, encode} from 'cbor2';
-import {hexToU8, u8concat} from 'cbor2/utils';
+import {base64UrlToBytes, hexToU8, u8concat} from 'cbor2/utils';
 import {ByteTree} from './byteTree.js';
 import {numToBytes} from './spec.js';
 
@@ -10,9 +12,9 @@ const TD = new TextDecoder('utf-8', {
 
 export interface StringChunk {
   mt: number; // -1 for unknown app-string
-  str: Uint8Array;
+  str: Uint8Array | string;
   spec?: string;
-  prefix?: Uint8Array;
+  prefix?: Uint8Array | string;
   v?: 4 | 6; // Only used for IP addresses
 }
 
@@ -82,13 +84,13 @@ export function combineStrings(chunks: ChunkTree): ByteTree {
       if (last instanceof ByteTree) {
         ret.push(si);
       } else {
-        last.str = u8concat([last.str, si.str]);
+        last.str = u8concat([last.str as Uint8Array, si.str as Uint8Array]);
       }
     } else if (last instanceof ByteTree) {
       si.mt = mode;
       ret.push(si);
     } else {
-      last.str = u8concat([last.str, si.str]);
+      last.str = u8concat([last.str as Uint8Array, si.str as Uint8Array]);
     }
   }
 
@@ -111,14 +113,14 @@ export function combineStrings(chunks: ChunkTree): ByteTree {
         }
         if (mode === MT.UTF8_STRING) {
           // Thows if invalid UTF-8.
-          TD.decode(x.str);
+          TD.decode(x.str as Uint8Array);
         }
         if (mode === MT.ENCODED_BYTES) {
-          return new ByteTree(x.str);
+          return new ByteTree(x.str as Uint8Array);
         }
         return new ByteTree(
           numToBytes({int: x.str.length}, x.spec, mode),
-          x.str
+          x.str as Uint8Array
         );
       })
     );
@@ -132,15 +134,15 @@ export function combineStrings(chunks: ChunkTree): ByteTree {
 
   if (mode === MT.UTF8_STRING) {
     // Thows if invalid UTF-8.
-    TD.decode(x.str);
+    TD.decode(x.str as Uint8Array);
   }
 
   if (mode === MT.ENCODED_BYTES) {
-    return new ByteTree(x.str);
+    return new ByteTree(x.str as Uint8Array);
   }
   const bt = new ByteTree(
     numToBytes({int: x.str.length}, x.spec, mode),
-    x.str
+    x.str as Uint8Array
   );
   bt.mt = mode;
   if (x.spec === '') {
@@ -152,28 +154,47 @@ export function combineStrings(chunks: ChunkTree): ByteTree {
 /**
  * Convert string to pre-encoded Uint8Array.
  *
+ * @param prefix DT or dt.
  * @param dt ISO date string.
  * @returns Obj ready for processing with combineStrings.
  */
-export function encodeDate(dt: string): Uint8Array {
-  const d = new Date(dt);
+export function encodeDate(
+  prefix: string,
+  dt: unknown
+): Uint8Array | StringChunk {
+  const d = new Date(dt as string);
   const tm = d.getTime() / 1000;
-  if (Number.isSafeInteger(tm)) {
-    return numToBytes({int: tm});
+  const str = Number.isSafeInteger(tm) ?
+    numToBytes({int: tm}) :
+    numToBytes({float: tm});
+  if (prefix === 'dt') {
+    return {
+      mt: MT.ENCODED_BYTES,
+      str,
+    };
   }
-  return numToBytes({float: tm});
+  return {
+    mt: MT.ENCODED_BYTES,
+    str: new ByteTree(numToBytes({int: 1}, null, MT.TAG), str).bytes(),
+  };
 }
 
 /**
  * Coalesce all valid bytes together into chunks, and all adjacent ellipses
  * into a single ellipsis.
  *
- * @param str Chunks.
+ * @param _prefix Ignored.
+ * @param chunks Chunks.
  * @returns Coalesced array.
  */
 export function encodeHex(
-  str: (string | ByteTree)[]
-): (StringChunk | ByteTree)[] {
+  _prefix: string,
+  chunks: unknown
+): Uint8Array | (StringChunk | ByteTree)[] {
+  if (chunks == null) {
+    return new Uint8Array(0);
+  }
+  const str = chunks as (string | ByteTree)[];
   // SQS str:(@(hex_byte / ellipsis) SQS)*
   if (str.length === 0) {
     return [{mt: MT.BYTE_STRING, str: new Uint8Array()}];
@@ -211,12 +232,15 @@ export interface IPbytes {
  * Given an IPv4 or IPv6 address, possible with a mask, trim the address
  * if needed.
  *
- * @param addr IP address.
- * @param mask If provided, number of bits to mask.
+ * @param prefix IP or ip.
+ * @param str Array of [IPbytes, number].
  * @returns Chunk with either the address or [mask, address] pre-encoded,
  *   as well as v set.
  */
-export function encodeIP(addr: IPbytes, mask?: number | null): StringChunk {
+export function encodeIP(prefix: string, str: unknown): StringChunk {
+  const [addr, mask] = str as [IPbytes, number?];
+
+  let inside: StringChunk | null = null;
   if (mask) {
     // Trim length of bytes to mask bits
     const numBytes = Math.ceil(mask / 8);
@@ -238,16 +262,27 @@ export function encodeIP(addr: IPbytes, mask?: number | null): StringChunk {
     }
     bytes = bytes.slice(0, count);
 
-    return {
+    inside = {
       mt: MT.ENCODED_BYTES,
       str: encode([mask, bytes]),
       v: addr.v,
     };
+  } else {
+    inside = {
+      mt: MT.ENCODED_BYTES,
+      str: encode(addr.bytes),
+      v: addr.v,
+    };
+  }
+  if (prefix === 'ip') {
+    return inside;
   }
   return {
     mt: MT.ENCODED_BYTES,
-    str: encode(addr.bytes),
-    v: addr.v,
+    str: new ByteTree(
+      numToBytes({int: (addr.v === 4) ? IPV4_TAG : IPV6_TAG}, null, MT.TAG),
+      inside.str as Uint8Array
+    ).bytes(),
   };
 }
 
@@ -280,4 +315,76 @@ export function encodeIPv6(bytes: (string | Uint8Array | IPbytes)[]): IPbytes {
     bytes: u8concat(bf as Uint8Array[]),
     v: 6,
   };
+}
+
+function encodeB64(_prefix: string, b64: unknown): Uint8Array {
+  const b = (b64 as string[]).flat(Infinity).join('');
+  return base64UrlToBytes(b);
+}
+
+export type ParsedAppStrFunc = (
+  prefix: string,
+  parsed: unknown
+) => Uint8Array | StringChunk | ChunkTree | (StringChunk | ByteTree)[];
+
+export type PossibleResults
+  = [rule: string, ParsedAppStrFunc?]
+  | [rule: null, StringChunk | ChunkTree | Uint8Array];
+
+export type AppStrFunc = (
+  prefix: string,
+  str: string
+) => PossibleResults;
+
+const knownTypes = new Map<string, AppStrFunc>();
+
+/**
+ * Register an app-string decoder.
+ *
+ * @param prefix The string before the first squote.
+ * @param fun Function to process the string.
+ */
+export function registerAppString(
+  prefix: string,
+  fun: AppStrFunc | null | undefined
+): void {
+  if (fun) {
+    knownTypes.set(prefix, fun);
+  } else {
+    knownTypes.delete(prefix);
+  }
+}
+
+registerAppString('h', () => ['app_string_h', encodeHex]);
+registerAppString('b64', () => ['app_string_b64', encodeB64]);
+registerAppString('dt', () => ['date_time', encodeDate]);
+registerAppString('DT', () => ['date_time', encodeDate]);
+registerAppString('ip', () => ['app_string_ip', encodeIP]);
+registerAppString('IP', () => ['app_string_ip', encodeIP]);
+
+/**
+ * Two-step processing for app-string plugins.  If the first step returns null
+ * for the first item in the array, decoding happens all in the first step.
+ * Otherwise, return `[grammarRuleName, callback]`. The named grammar
+ * rule will be called, and the results passed to `callback(prefix, results)`.
+ *
+ * @param prefix Results of app_prefix.
+ * @param str The matched sqstr, with squotes unescaped.
+ * @returns One of the possible approaches.
+ */
+export function parseAppString(
+  prefix: string,
+  str: string
+): PossibleResults {
+  const fun = knownTypes.get(prefix);
+  if (!fun) {
+    return [
+      null, {
+        mt: MT.CUSTOM,
+        prefix,
+        str,
+      },
+    ];
+  }
+  return fun(prefix, str);
 }
