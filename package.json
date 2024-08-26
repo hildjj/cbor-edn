@@ -52,6 +52,7 @@
     "typescript-eslint": "8.2.0"
   },
   "dependencies": {
+    "@scure/base": "1.1.7",
     "cbor2": "1.5.1"
   },
   "packageManager": "pnpm@9.8.0",

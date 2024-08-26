@@ -2,6 +2,7 @@ import {
   CUSTOM_APP_TAG, ELLIPSE_TAG, IPV4_TAG, IPV6_TAG, MT,
 } from './constants.js';
 import {Tag, encode} from 'cbor2';
+import {base32, base32hex} from '@scure/base';
 import {base64UrlToBytes, hexToU8, u8concat} from 'cbor2/utils';
 import {ByteTree} from './byteTree.js';
 import {numToBytes} from './spec.js';
@@ -358,6 +359,8 @@ registerAppString('dt', () => ['date_time', encodeDate]);
 registerAppString('DT', () => ['date_time', encodeDate]);
 registerAppString('ip', () => ['app_string_ip', encodeIP]);
 registerAppString('IP', () => ['app_string_ip', encodeIP]);
+registerAppString('b32', (_p: string, str: string) => [null, base32.decode(str)]);
+registerAppString('h32', (_p: string, str: string) => [null, base32hex.decode(str)]);
 
 /**
  * Two-step processing for app-string plugins.  If the first step returns null

@@ -26,15 +26,15 @@ const bytes = parseEDN("[_2 h'010203']");
 The CLI version of cbor-edn is useful only for diagnostic purposes. Usage:
 
 ```
-edn [options] [diagnosticNotationString]
+edn [options] [diagnosticString]
 
 Positional:
- diagnosticNotationString The string to parse.  If not given, reads from stdin.
+ diagnosticString The string to parse.  If not given, reads from stdin.
 
 Options:
  -a,--always            Always add encoding indicators when re-encoding.
  -n,--never             Never add encoding indicators when re-encoding.
- -f,--file              Read file as input, if not positional given.
+ -f,--file              Read file as input, if diagnosticString not given.
                         If "-", read stdin.  May be given multiple times.
                         Default: "-".
  -s,--startRule <rule>  Entry point for the grammar.  Default: "one_item"
@@ -43,7 +43,7 @@ Options:
 Example:
 
 ```sh
-$ edn "[_2 h'010203']"
+$ npx edn "[_2 h'010203']"
 bytes: 9a0000000143010203
 0x9a0000000143010203
 9a 00000001 -- Array (Length: 1 item)
