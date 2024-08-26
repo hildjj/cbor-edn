@@ -28,13 +28,31 @@ const opts = util.parseArgs({
       type: 'boolean',
       default: false,
     },
+    file: {
+      short: 'f',
+      type: 'string',
+      multiple: true,
+      default: ['-'],
+    },
   },
 });
 
-const inputs = (opts.positionals.length < 1) ?
-  [fs.readFileSync(0, 'utf8')] :
-  opts.positionals;
 const colors = process.stdout.isTTY;
+let diagnosticSizes = DiagnosticSizes.PREFERRED;
+if (opts.values.never) {
+  if (opts.values.always) {
+    console.error('--never and --always are mutually-exclusive');
+    process.exit(1);
+  }
+  diagnosticSizes = DiagnosticSizes.NEVER;
+}
+if (opts.values.always) {
+  diagnosticSizes = DiagnosticSizes.ALWAYS;
+}
+
+const inputs = (opts.positionals.length < 1) ?
+  opts.values.file.map(f => fs.readFileSync((f === '-') ? 0 : f, 'utf8')) :
+  opts.positionals;
 
 function decodeU8(obj) {
   if (typeof obj === 'object') {
@@ -71,13 +89,6 @@ try {
         depth: Infinity,
         colors,
       }));
-      let diagnosticSizes = DiagnosticSizes.PREFERRED;
-      if (opts.values.never) {
-        diagnosticSizes = DiagnosticSizes.NEVER;
-      }
-      if (opts.values.always) {
-        diagnosticSizes = DiagnosticSizes.ALWAYS;
-      }
 
       console.log(
         'diagonstic recreated from js:',

@@ -6,7 +6,6 @@
 .ncurc
 .peggy.config.js
 .vscode/
-bin/
 coverage/
 docs/
 edn-abnf/
