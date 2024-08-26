@@ -5,7 +5,7 @@ Description
 ## Installation
 
 ```sh
-npm install cbor-edn
+npm install hildjj/cbor-edn
 ```
 
 ## API

@@ -37,6 +37,7 @@
     "build": "npm run test && npm run lint && npm run docs && npm pack --dry-run"
   },
   "devDependencies": {
+    "@cto.af/eslint-config": "4.1.5",
     "@fast-csv/parse": "5.0.0",
     "@peggyjs/coverage": "1.2.0",
     "@types/node": "22.5.0",
@@ -47,12 +48,11 @@
     "peggy": "github:peggyjs/peggy",
     "rimraf": "6.0.1",
     "typedoc": "0.26.6",
-    "typescript": "5.5.4"
+    "typescript": "5.5.4",
+    "typescript-eslint": "8.2.0"
   },
   "dependencies": {
-    "@cto.af/eslint-config": "4.1.5",
-    "cbor2": "1.5.1",
-    "typescript-eslint": "8.2.0"
+    "cbor2": "1.5.1"
   },
   "packageManager": "pnpm@9.8.0",
   "engines": {
