@@ -189,7 +189,7 @@ app_string
     } else if (typeof res === 'string')  {
       res = {
         mt: MT.UTF8_STRING,
-        str: res,
+        str: TE.encode(res),
       }
     }
     return res;
@@ -214,7 +214,7 @@ hex_byte
   = a:HEXDIG S b:HEXDIG { return a + b }
 
 app_string_b64
-  = @(B ((b64dig B)|4|)* (b64dig B b64dig B ("=" B "=" / b64dig B "="?)? B)? ("#" @inon_lf*)?)
+  = @(B ((b64dig B)|4|)* (b64dig B b64dig B ("=" B "=" / b64dig B "="?)? B)? end_icomment?)
 
 b64dig
   = ALPHA
@@ -227,13 +227,15 @@ B
 iblank
   = [\n ]
 
+end_icomment = "#" inon_lf* { return '' }
+
 icomment
-  = "#" inon_lf* "\n"
+  = @end_icomment "\n"
 
 inon_lf
-  = always_safe { return '' }
-  / ["/\\] { return '' }
-  / "\\" SQUOTE { return '' }
+  = always_safe
+  / ["/]
+  / "\\" SQUOTE
 
 app_string_dt
   = date_time
@@ -370,24 +372,18 @@ SQS
   = blank* (sq_comment blank*)*
 
 comment
-  = "/" non_slash* "/"
-  / hash_comment
+  = SLASH non_slash* SLASH
+  / HASH non_lf* ("\n" / EOF)
 
 sq_comment
   = sq_slash_comment
   / sq_hash_comment
 
-slash_comment
-  = SLASH non_slash* SLASH
-
-hash_comment
-  =  "#" non_lf* ("\n" / EOF)
-
 sq_slash_comment
-  = SLASH sq_non_slash* "/"
+  = SLASH sq_non_slash* SLASH
 
 sq_hash_comment
-  = HASH sq_non_lf* (LF / &"'")
+  = HASH sq_non_lf* LF
 
 non_slash
   = sq_non_slash
@@ -456,7 +452,7 @@ single_quoted
   / LF
   / SLASH
   / DQUOTE
-  / "\\" SQUOTE { return "'" }
+  / "\\" @SQUOTE
   / "\\" @escapable
 
 escapable

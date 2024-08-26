@@ -191,9 +191,6 @@ export function encodeHex(
   _prefix: string,
   chunks: unknown
 ): Uint8Array | (StringChunk | ByteTree)[] {
-  if (chunks == null) {
-    return new Uint8Array(0);
-  }
   const str = chunks as (string | ByteTree)[];
   // SQS str:(@(hex_byte / ellipsis) SQS)*
   if (str.length === 0) {

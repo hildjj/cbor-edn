@@ -4,7 +4,9 @@
 .github/
 .gitmodules
 .ncurc
+.peggy.config.js
 .vscode/
+bin/
 coverage/
 docs/
 edn-abnf/
@@ -14,4 +16,3 @@ test.c
 test/
 tsconfig.json
 typedoc.config.cjs
-.peggy.config.js

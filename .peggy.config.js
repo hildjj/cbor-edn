@@ -6,6 +6,11 @@ export default {
   allowedStartRules: [
     // 'seq',
     // 'one_item',
+    // 'app_string_h',
+    // 'app_string_b64',
+    // 'app_string_dt',
+    // 'app_string_ip',
+
     '*',
   ],
   returnTypes: {
