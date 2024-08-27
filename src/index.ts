@@ -19,8 +19,14 @@ export {
 };
 
 export interface EDNoptions {
+
+  /** These are passed along to the grammar.  Never needed. */
   [key: string]: unknown;
+
+  /** Start rule.  Sane choices are "seq" and "one-item" (the default). */
   startRule?: StartRuleNames;
+
+  /** Set if parsing from a file to make error messages more helpful. */
   grammarSource?: GrammarSource;
 }
 
@@ -28,14 +34,14 @@ export interface EDNoptions {
  * Parse a CBOR Extended Diagnostic Notation (EDN) string.
  *
  * @param edn String to parse.
- * @param opts Encode and decode options.
- * @returns Best approximation in JS of the parsed EDN.
+ * @param opts Encode options.
+ * @returns Bytes corresponding to the EDN.
  * @throws On syntax error.
  */
 export function parseEDN(
   edn: string,
   opts: EDNoptions
-): unknown {
+): Uint8Array {
   opts = {
     startRule: 'one_item',
     grammarSource: 'parseEDN',
