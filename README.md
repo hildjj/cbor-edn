@@ -1,11 +1,16 @@
 # cbor-edn
 
-Description
+Parse CBOR Extended Diagnostic Notation as defined by
+[draft-ietf-cbor-edn-literals-11](https://www.ietf.org/archive/id/draft-ietf-cbor-edn-literals-11.html)
+and some CBOR working group discussions.
+
+To play with this, use the
+[CBOR2 Playground](https://hildjj.github.io/cbor2/playground/index.html).
 
 ## Installation
 
 ```sh
-npm install hildjj/cbor-edn
+npm install cbor-edn
 ```
 
 ## API
