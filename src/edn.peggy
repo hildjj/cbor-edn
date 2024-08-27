@@ -104,7 +104,7 @@ sign
 
 decnumber
   = n:$(sign? (DIGIT+ ("." DIGIT*)? / "." DIGIT+) ("e"i sign? DIGIT+)?) {
-    if (/[\.e]/.test(n) || n === '-0') {
+    if (/[\.e]/.test(n)) {
       return {float: parseFloat(n)};
     }
     const b = BigInt(n);

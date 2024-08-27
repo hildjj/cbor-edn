@@ -38,6 +38,7 @@
   },
   "devDependencies": {
     "@cto.af/eslint-config": "4.1.5",
+    "@fast-csv/format": "5.0.0",
     "@fast-csv/parse": "5.0.0",
     "@peggyjs/coverage": "1.2.0",
     "@types/node": "22.5.0",
@@ -49,13 +50,13 @@
     "rimraf": "6.0.1",
     "typedoc": "0.26.6",
     "typescript": "5.5.4",
-    "typescript-eslint": "8.2.0"
+    "typescript-eslint": "8.3.0"
   },
   "dependencies": {
     "@scure/base": "1.1.7",
     "cbor2": "1.5.1"
   },
-  "packageManager": "pnpm@9.8.0",
+  "packageManager": "pnpm@9.9.0",
   "engines": {
     "node": ">=18"
   }

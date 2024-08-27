@@ -1,25 +1,26 @@
 import {hexToU8, u8toHex} from 'cbor2/utils';
 import assert from 'node:assert/strict';
+import {fileURLToPath} from 'node:url';
 import fs from 'node:fs';
 import {parse} from '@fast-csv/parse';
 import {parseEDN} from '../lib/index.js';
+import path from 'node:path';
 // eslint-disable-next-line n/no-unsupported-features/node-builtins
 import {test} from 'node:test';
 
+const rootDir = fileURLToPath(new URL('../', import.meta.url));
 const TD = new TextDecoder('utf-8', {
   fatal: true,
 });
 
-test('vectors', () => {
-  const vfile = new URL('../edn-abnf/tests/basic.csv', import.meta.url);
-
+function testCSVfile(filename) {
   return new Promise((resolve, reject) => {
     const stream = parse({
       headers: false,
       ignoreEmpty: true,
-      trim: true,
+      trim: false,
+      comment: '#',
     })
-      .validate(row => !/^\s*#/.test(row))
       .on('error', reject)
       .on('data', ([op, orig, expected]) => {
         try {
@@ -31,7 +32,7 @@ test('vectors', () => {
             case '=': {
               const bytesOrig = parseEDN(orig);
               const bytesExpected = parseEDN(expected);
-              assert.deepEqual(bytesOrig, bytesExpected, u8toHex(bytesOrig));
+              assert.deepEqual(bytesOrig, bytesExpected, orig);
               break;
             }
             case '-':
@@ -66,6 +67,27 @@ test('vectors', () => {
       })
       .on('end', resolve);
 
-    fs.createReadStream(vfile, 'utf-8').pipe(stream);
+    fs.createReadStream(filename, 'utf-8').pipe(stream);
   });
-});
+}
+
+async function testDir(dir) {
+  const d = path.relative(rootDir, fileURLToPath(dir));
+  await test(`dir: "${d}"`, async() => {
+    const files = await fs.promises.readdir(dir);
+    for (const f of files) {
+      if (!f.endsWith('.csv')) {
+        continue;
+      }
+      await test(f, () => testCSVfile(new URL(f, dir)));
+    }
+  });
+}
+
+test('local csv', () => testDir(
+  new URL('./', import.meta.url)
+));
+
+test('from ruby edn-abnf', () => testDir(
+  new URL('../edn-abnf/tests/', import.meta.url)
+));
