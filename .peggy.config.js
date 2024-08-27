@@ -4,14 +4,15 @@ export default {
   input: 'src/edn.peggy',
   output: 'lib/edn.js',
   allowedStartRules: [
-    // 'seq',
-    // 'one_item',
-    // 'app_string_h',
-    // 'app_string_b64',
-    // 'app_string_dt',
-    // 'app_string_ip',
+    'seq',
+    'one_item',
+    'app_string_h',
+    'app_string_b64',
+    'app_string_dt',
+    'app_string_ip',
+    'date_time',
 
-    '*',
+    // '*',
   ],
   returnTypes: {
     seq: 'Uint8Array[]',
