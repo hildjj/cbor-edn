@@ -1,3 +1,5 @@
+import {u8toHex} from 'cbor2/utils';
+
 export type ByteItem = ByteTree | ByteItem[] | Uint8Array;
 
 function len(items: ByteItem[]): number {
@@ -21,15 +23,19 @@ function allBytes(
     } else if (t instanceof Uint8Array) {
       into.set(t, offset);
       offset += t.length;
-    } else {
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    } else if (t instanceof ByteTree) {
       t.bytes(into, offset);
       offset += t.length;
+    } else {
+      throw new Error(`Invalid ByteTree item: ${t}`);
     }
   }
   return offset;
 }
 
 export class ByteTree {
+  public mt = 0;
   #length = 0;
   #items: ByteItem[] = [];
 
@@ -68,7 +74,12 @@ export class ByteTree {
     let ret = 'ByteTree(';
     ret += this.#length;
     ret += ')[';
-    ret += String(this.#items);
+    ret += this.#items.map(i => {
+      if (i instanceof Uint8Array) {
+        return `0x${u8toHex(i)}`;
+      }
+      return String(i);
+    }).join(', ');
     ret += ']';
     return ret;
   }

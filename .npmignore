@@ -4,6 +4,7 @@
 .github/
 .gitmodules
 .ncurc
+.peggy.config.js
 .vscode/
 coverage/
 docs/

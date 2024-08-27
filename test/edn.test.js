@@ -21,5 +21,44 @@ test('grammar coverage', async() => {
       validResult: hexToU8('63666f6f636261726362617a'),
       peg$maxFailPos: 17,
     },
+    {
+      invalidInput: '\\!',
+      options: {
+        peg$startRuleFunction: 'peg$parseslash_escaped',
+      },
+    },
+    {
+      invalidInput: '\\!',
+      options: {
+        peg$startRuleFunction: 'peg$parsehash_escaped',
+      },
+    },
+    {
+      invalidInput: '\x00',
+      options: {
+        peg$startRuleFunction: 'peg$parsealways_safe',
+        peg$silentFails: -1,
+      },
+    },
+    {
+      invalidInput: '\ud800\x00',
+      options: {
+        peg$startRuleFunction: 'peg$parsealways_safe',
+        peg$silentFails: -1,
+      },
+    },
+    // HTAB is hoisted, so it gets abandoned
+    {
+      validInput: '\t',
+      options: {
+        peg$startRuleFunction: 'peg$parseHTAB',
+      },
+    },
+    {
+      invalidInput: '0',
+      options: {
+        peg$startRuleFunction: 'peg$parseHTAB',
+      },
+    },
   ]);
 });

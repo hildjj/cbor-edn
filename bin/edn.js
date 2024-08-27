@@ -1,27 +1,113 @@
 #!/usr/bin/env -S node --enable-source-maps
 /* eslint-disable no-console */
 
-import {comment, decode, diagnose} from 'cbor2';
+import {DiagnosticSizes, comment, decode, diagnose} from 'cbor2';
+import {ByteTree} from '../lib/byteTree.js';
 import fs from 'node:fs';
 import {parseEDN} from '../lib/index.js';
 import {u8toHex} from 'cbor2/utils';
 import util from 'node:util';
 
-const inp = (process.argv.length < 3) ?
-  fs.readFileSync(0, 'utf8') :
-  process.argv[2];
+// eslint-disable-next-line n/no-unsupported-features/node-builtins
+const opts = util.parseArgs({
+  strict: true,
+  allowPositionals: true,
+  options: {
+    startRule: {
+      short: 's',
+      type: 'string',
+      default: 'one_item',
+    },
+    never: {
+      short: 'n',
+      type: 'boolean',
+      default: false,
+    },
+    always: {
+      short: 'a',
+      type: 'boolean',
+      default: false,
+    },
+    file: {
+      short: 'f',
+      type: 'string',
+      multiple: true,
+      default: ['-'],
+    },
+  },
+});
+
 const colors = process.stdout.isTTY;
+let diagnosticSizes = DiagnosticSizes.PREFERRED;
+if (opts.values.never) {
+  if (opts.values.always) {
+    console.error('--never and --always are mutually-exclusive');
+    process.exit(1);
+  }
+  diagnosticSizes = DiagnosticSizes.NEVER;
+}
+if (opts.values.always) {
+  diagnosticSizes = DiagnosticSizes.ALWAYS;
+}
 
-const bytes = parseEDN(inp);
-console.log('bytes:', u8toHex(bytes));
-console.log(comment(bytes));
+const inputs = (opts.positionals.length < 1) ?
+  opts.values.file.map(f => fs.readFileSync((f === '-') ? 0 : f, 'utf8')) :
+  opts.positionals;
 
-const js = decode(bytes);
-console.log('js:', util.inspect(js, {
-  depth: Infinity,
-  colors,
-}));
-console.log(
-  'diagonstic recreated from js:',
-  util.inspect(diagnose(bytes), {colors})
-);
+function decodeU8(obj) {
+  if (typeof obj === 'object') {
+    if (obj instanceof Uint8Array) {
+      return `0x${u8toHex(obj)}`;
+    }
+    if (Array.isArray(obj)) {
+      return obj.map(o => decodeU8(o));
+    }
+    if (obj instanceof Map) {
+      const ents = obj.entries();
+      return new Map(ents.map(([k, v]) => [k, decodeU8(v)]));
+    }
+    if (obj instanceof ByteTree) {
+      return obj;
+    }
+    const ents = Object.entries(obj);
+    return Object.fromEntries(ents.map(([k, v]) => [k, decodeU8(v)]));
+  }
+  return obj;
+}
+
+try {
+  for (const inp of inputs) {
+    const bytes = parseEDN(inp, {
+      startRule: opts.values.startRule,
+    });
+    if (bytes instanceof Uint8Array) {
+      console.log('bytes:', u8toHex(bytes));
+      console.log(comment(bytes));
+
+      const js = decode(bytes);
+      console.log('js:', util.inspect(js, {
+        depth: Infinity,
+        colors,
+      }));
+
+      console.log(
+        'diagonstic recreated from js:',
+        util.inspect(diagnose(bytes, {
+          diagnosticSizes,
+        }), {colors})
+      );
+    } else {
+      console.log('js:', util.inspect(decodeU8(bytes), {
+        depth: Infinity,
+        colors,
+      }));
+    }
+    console.log();
+  }
+} catch (e) {
+  if (typeof e.format === 'function') {
+    console.log(e.message);
+  } else {
+    throw e;
+  }
+}

@@ -1,17 +1,27 @@
 import {
-  type DecodeOptions,
-  type EncodeOptions,
-  defaultDecodeOptions,
-  defaultEncodeOptions,
-} from 'cbor2';
+  type GrammarSource,
+  type GrammarSourceObject,
+  type Location,
+  type StartRuleNames,
+  type SyntaxError,
+  parse,
+
 // eslint-disable-next-line n/no-missing-import
-import {type SyntaxError, parse} from '../lib/edn.js';
+} from '../lib/edn.js';
 
 const source = 'parseEDN';
 
+export {
+  GrammarSource,
+  GrammarSourceObject,
+  Location,
+  StartRuleNames,
+};
+
 export interface EDNoptions {
-  decodeOptions: DecodeOptions;
-  encodeOptions: EncodeOptions;
+  [key: string]: unknown;
+  startRule?: StartRuleNames;
+  grammarSource?: GrammarSource;
 }
 
 /**
@@ -24,17 +34,16 @@ export interface EDNoptions {
  */
 export function parseEDN(
   edn: string,
-  opts: EDNoptions = {
-    decodeOptions: defaultDecodeOptions,
-    encodeOptions: defaultEncodeOptions,
-  }
+  opts: EDNoptions
 ): unknown {
+  opts = {
+    startRule: 'one_item',
+    grammarSource: 'parseEDN',
+    ...opts,
+  };
+
   try {
-    return parse(edn, {
-      startRule: 'one_item',
-      grammarSource: source,
-      ...opts,
-    });
+    return parse(edn, opts);
   } catch (e) {
     const ef = e as SyntaxError;
     if (typeof ef.format === 'function') {
@@ -44,3 +53,15 @@ export function parseEDN(
     throw e;
   }
 }
+
+export type {ByteItem, ByteTree} from './byteTree.js';
+
+export {
+  registerAppString,
+  type AppStrFunc,
+  type ChunkTree,
+  type ParsedAppStrFunc,
+  type PossibleResults,
+  type StringChunk,
+  type ChunkOrEllipsis,
+} from './string.js';
