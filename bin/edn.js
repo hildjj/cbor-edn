@@ -105,9 +105,5 @@ try {
     console.log();
   }
 } catch (e) {
-  if (typeof e.format === 'function') {
-    console.log(e.message);
-  } else {
-    throw e;
-  }
+  console.log(e.message);
 }

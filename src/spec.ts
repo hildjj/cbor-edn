@@ -51,6 +51,9 @@ export function numToBytes(
         num = encodedNumber(n.int, 'i', mt);
         break;
       case '':
+        if (mt < MT.BYTE_STRING || mt > MT.MAP) {
+          throw new Error(`Invalid indefinite encoding for mt ${mt}`);
+        }
         return new Uint8Array([0x1f | (mt << 5)]);
       case 'i':
         num = encodedNumber(n.int, 'i0', mt);
