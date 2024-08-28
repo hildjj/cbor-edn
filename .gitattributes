@@ -1,17 +1,17 @@
-*.js text eol=lf
 *.cjs text eol=lf
+*.css text eol=lf
+*.csv text eol=lf
+*.html text eol=lf
+*.ico binary
+*.jpg binary
+*.js text eol=lf
+*.json text eol=lf
+*.map text eol=lf
 *.mjs text eol=lf
+*.pdf binary
+*.peg.js text eol=lf linguist-language=PEG.js
+*.peggy text eol=lf linguist-language=PEG.js
+*.pegjs text eol=lf linguist-language=PEG.js
+*.png binary
 *.ts text eol=lf
 *.tsx text eol=lf
-*.peggy text eol=lf
-*.pegjs text eol=lf
-*.peg.js text eol=lf
-*.json text eol=lf
-*.html text eol=lf
-*.css text eol=lf
-*.map text eol=lf
-*.png binary
-*.jpg binary
-*.ico binary
-*.pdf binary
-docs/* binary

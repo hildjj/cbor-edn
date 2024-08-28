@@ -122,7 +122,15 @@ hexfloat
 
 hexint
   = sign:sign? "0x"i dig:$HEXDIG+ {
-    return {int: parseInt(`${sign || ''}${dig}`, 16)};
+    let bi = BigInt(`0x${dig}`);
+    if (sign === '-') {
+      bi *= -1n;
+    }
+    if ((bi <= Number.MAX_SAFE_INTEGER) && (bi >= Number.MIN_SAFE_INTEGER)) {
+      return {int: Number(bi)};
+    } else {
+      return {int: bi};
+    }
   }
 
 octint

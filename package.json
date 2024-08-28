@@ -41,7 +41,7 @@
     "@fast-csv/format": "5.0.0",
     "@fast-csv/parse": "5.0.0",
     "@peggyjs/coverage": "1.2.0",
-    "@types/node": "22.5.0",
+    "@types/node": "22.5.1",
     "abnf": "3.0.1",
     "c8": "10.1.2",
     "eslint-plugin-jsdoc": "50.2.2",
@@ -54,7 +54,7 @@
   },
   "dependencies": {
     "@scure/base": "1.1.7",
-    "cbor2": "1.5.1"
+    "cbor2": "1.5.3"
   },
   "packageManager": "pnpm@9.9.0",
   "engines": {
