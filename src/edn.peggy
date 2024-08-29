@@ -36,11 +36,11 @@ function callRule(rule, start, end, er) {
   peg$savedPos = start;
   input = input.slice(0, end);
   let s0 = r();
+  input = oldInput;
   if ((s0 === peg$FAILED) || (peg$currPos !== end)) {
     peg$currPos = end;
     error(er);
   }
-  input = oldInput;
   peg$currPos = oldPos;
   return s0;
 }
