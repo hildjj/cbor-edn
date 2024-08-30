@@ -1,6 +1,6 @@
 {
   "name": "cbor-edn",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "decription": "Parse CBOR Extended Diagnostic Notation",
   "type": "module",
   "main": "lib/index.js",
