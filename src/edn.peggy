@@ -24,7 +24,7 @@ function deHex(str) {
 }}
 
 {
-function callRule(rule, start, end, er) {
+function callRule(rule, start, end) {
   const r = peg$startRuleFunctions[rule];
   if (!r) {
     throw new Error(`Invalid start rule "${rule}"`);
@@ -37,9 +37,12 @@ function callRule(rule, start, end, er) {
   input = input.slice(0, end);
   let s0 = r();
   input = oldInput;
-  if ((s0 === peg$FAILED) || (peg$currPos !== end)) {
-    peg$currPos = end;
-    error(er);
+  if (s0 === peg$FAILED) {
+    return s0;
+  }
+  if (peg$currPos !== end) {
+    peg$fail(peg$endExpectation());
+    return peg$FAILED;
   }
   peg$currPos = oldPos;
   return s0;
@@ -183,7 +186,10 @@ app_string
       let {start, end} = range();
       start += prefix.length + 1; // After the first SQUOTE
       end -= 1; // Before the last SQUOTE
-      res = callRule(rule, start, end, `Invalid app-string-${prefix} formatting`);
+      res = callRule(rule, start, end);
+      if (res === peg$FAILED) {
+        return res;
+      }
       if (fun) {
         res = fun(prefix, res);
       }
