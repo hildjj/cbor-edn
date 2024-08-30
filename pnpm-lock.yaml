@@ -42,6 +42,9 @@ importers:
       eslint-plugin-markdown:
         specifier: 5.1.0
         version: 5.1.0(eslint@9.9.0)
+      package-extract:
+        specifier: 2.0.2
+        version: 2.0.2
       peggy:
         specifier: github:peggyjs/peggy
         version: https://codeload.github.com/peggyjs/peggy/tar.gz/74186b220a9d5675965ae5f7abc0ad5e138d6aaf
@@ -792,6 +795,11 @@ packages:
   p-locate@5.0.0:
     resolution: {integrity: sha512-LaNjtRWUBY++zB5nE/NwcaoMylSPk+S+ZHNB1TzdbMJMny6dynpAGt7X/tl/QYq3TIeE6nxHppbo2LGymrG5Pw==}
     engines: {node: '>=10'}
+
+  package-extract@2.0.2:
+    resolution: {integrity: sha512-aZosgc0hC+uPkAKlnTIaXZ5cR0zniFVGf6vVNZOpgEdpmgd/Caxlk6BJt23qe7uRGQhjro2yhO5XY7kLgv5Syg==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   package-json-from-dist@1.0.0:
     resolution: {integrity: sha512-dATvCeZN/8wQsGywez1mzHtTlP22H8OEfPrVMLNr4/eGa+ijtLn/6M5f0dY8UKNrC2O9UCU6SSoG3qRKnt7STw==}
@@ -1866,6 +1874,10 @@ snapshots:
   p-locate@5.0.0:
     dependencies:
       p-limit: 3.1.0
+
+  package-extract@2.0.2:
+    dependencies:
+      commander: 12.1.0
 
   package-json-from-dist@1.0.0: {}
 

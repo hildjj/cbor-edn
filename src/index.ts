@@ -9,6 +9,8 @@ import {
 // eslint-disable-next-line n/no-missing-import
 } from '../lib/edn.js';
 
+export {version} from './version.js';
+
 const source = 'parseEDN';
 
 export {
