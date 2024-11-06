@@ -21,7 +21,7 @@ export type TypedNumber = IntNumber | FloatNumber;
  */
 export function numToBytes(
   n: TypedNumber,
-  spec?: string | null | undefined,
+  spec?: string | null,
   mt = MT.POS_INT
 ): Uint8Array {
   let num = null;
