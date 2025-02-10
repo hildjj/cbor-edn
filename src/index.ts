@@ -5,8 +5,6 @@ import {
   type StartRuleNames,
   type SyntaxError,
   parse,
-
-// eslint-disable-next-line n/no-missing-import
 } from '../lib/edn.js';
 
 export {version} from './version.js';

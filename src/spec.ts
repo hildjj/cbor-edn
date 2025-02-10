@@ -2,6 +2,8 @@ import {encode, encodedNumber, getEncoded} from 'cbor2';
 import {MT} from './constants.js';
 import {assert} from './assert.js';
 
+export const ORIGINAL = Symbol('ORIGINAL');
+
 export interface IntNumber {
   int: number;
 }
@@ -77,5 +79,11 @@ export function numToBytes(
 
   const enc = getEncoded(num);
   assert(enc);
+  Object.defineProperty(enc, ORIGINAL, {
+    configurable: false,
+    enumerable: false,
+    writable: false,
+    value: n,
+  });
   return enc;
 }

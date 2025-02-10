@@ -17,22 +17,26 @@ const opts = util.parseArgs({
       short: 's',
       type: 'string',
       default: 'one_item',
+      description: 'Start at this rule for parsing, instead of "seq".',
     },
     never: {
       short: 'n',
       type: 'boolean',
       default: false,
+      description: 'Never add encoding indicators',
     },
     always: {
       short: 'a',
       type: 'boolean',
       default: false,
+      description: 'Always add encoding indicators',
     },
     file: {
       short: 'f',
       type: 'string',
       multiple: true,
       default: ['-'],
+      description: 'File to read from.  "-" for stdin.',
     },
   },
 });

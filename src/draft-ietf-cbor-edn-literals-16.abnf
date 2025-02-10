@@ -1,4 +1,4 @@
-seq             = S [item S *(OC item S) OC]
+seq             = S [item *(MSC item) SOC]
 one-item        = S item S
 item            = map / array / tagged
                 / number / simple
@@ -33,40 +33,45 @@ tagged          = uint spec "(" S item S ")"
 app-prefix      = lcalpha *lcalnum ; including h and b64
                 / ucalpha *ucalnum ; tagged variant, if defined
 app-string      = app-prefix sqstr
-sqstr           = "'" *single-quoted "'"
+sqstr           = SQUOTE *single-quoted SQUOTE
 bstr            = app-string / sqstr / embedded
                   ; app-string could be any type
 tstr            = DQUOTE *double-quoted DQUOTE
 embedded        = "<<" seq ">>"
 
-array           = "[" spec S [item S *(OC item S) OC] "]"
-map             = "{" spec S [kp S *(OC kp S) OC] "}"
-kp              = item S ":" S item
+array           = "[" (specms S item *(MSC item) SOC / spec S) "]"
+map             = "{" (specms S keyp *(MSC keyp) SOC / spec S) "}"
+keyp            = item S ":" S item
 
 ; We allow %x09 HT in prose, but not in strings
 blank           = %x09 / %x0A / %x0D / %x20
 non-slash       = blank / %x21-2e / %x30-D7FF / %xE000-10FFFF
 non-lf          = %x09 / %x0D / %x20-D7FF / %xE000-10FFFF
-S               = *blank *(comment *blank)
 comment         = "/" *non-slash "/"
                 / "#" *non-lf %x0A
-
-; optional comma (ignored)
-OC              = ["," S]
+; optional space
+S               = *blank *(comment *blank)
+; mandatory space
+MS              = (blank/comment) S
+; mandatory comma and/or space
+MSC             = ("," S) / (MS ["," S])
+; optional comma and/or space
+SOC             = S ["," S]
 
 ; check semantically that strings are either all text or all bytes
 ; note that there must be at least one string to distinguish
-streamstring    = "(_" S string S *(OC string S) OC ")"
+streamstring    = "(_" MS string *(MSC string) SOC ")"
 spec            = ["_" *wordchar]
+specms          = ["_" *wordchar MS]
 
 double-quoted   = unescaped
-                / "'"
+                / SQUOTE
                 / "\" DQUOTE
                 / "\" escapable
 
 single-quoted   = unescaped
                 / DQUOTE
-                / "\" "'"
+                / "\" SQUOTE
                 / "\" escapable
 
 escapable       = %s"b" ; BS backspace U+0008
@@ -101,6 +106,7 @@ unescaped       = %x0A ; new line
                 / %xE000-10FFFF
 
 DQUOTE          = %x22    ; " double quote
+SQUOTE          = "'"     ; ' single quote
 DIGIT           = %x30-39 ; 0-9
 DIGIT1          = %x31-39 ; 1-9
 ODIGIT          = %x30-37 ; 0-7

@@ -1,11 +1,11 @@
 {{
-import {encode, Simple, Tag} from 'cbor2';
+import {decode, encode, Simple, Tag} from 'cbor2';
 import {base64UrlToBytes, hexToU8, u8toHex, u8concat} from 'cbor2/utils';
 import {ByteTree} from './byteTree.js';
 import {
   CUSTOM_APP_TAG, ELLIPSE_TAG, IPV4_TAG, IPV6_TAG, MT
 } from './constants.js';
-import {numToBytes} from './spec.js';
+import {numToBytes, ORIGINAL} from './spec.js';
 import {
   combineStrings, encodeDate, encodeHex, encodeIP, encodeIPv6, parseAppString
 } from './string.js';
@@ -156,14 +156,23 @@ simple
   / "true" { return TRUE }
   / "null" { return NULL }
   / "undefined" { return UNDEFINED }
-  / "simple(" S i:(hexint / octint / binint / decnumber ) S ")" {
-    if (!('int' in i)) {
-      error(`Expected int in simple, got: "${JSON.stringify(i)}"`);
+  / "simple(" S i:item ")" {
+    if (
+      !i ||
+      (i.constructor.name !== 'Uint8Array') ||
+      (i.length < 1) ||
+      (i[ORIGINAL]?.int == null)
+    ) {
+      throw new Error(`Invalid simple item: ${i}`);
     }
-    if (i.int < 0 || i.int > 255) {
+    const first = i[0];
+    if ((first & 0b11100000) !== 0) {
+      error(`Expected postitive int in simple, got: "${i}"`);
+    }
+    if (i[ORIGINAL].int > 255) {
       error(`Simple value must be between 0 and 255, inclusive, got ${i.int}`);
     }
-    return encode(new Simple(i.int));
+    return encode(new Simple(i[ORIGINAL].int));
   }
 
 uint
