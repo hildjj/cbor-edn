@@ -157,22 +157,23 @@ simple
   / "null" { return NULL }
   / "undefined" { return UNDEFINED }
   / "simple(" S i:item ")" {
+    const orig = i?.[ORIGINAL]?.int;
     if (
       !i ||
       (i.constructor.name !== 'Uint8Array') ||
       (i.length < 1) ||
-      (i[ORIGINAL]?.int == null)
+      (orig == null)
     ) {
       throw new Error(`Invalid simple item: ${i}`);
     }
     const first = i[0];
     if ((first & 0b11100000) !== 0) {
-      error(`Expected postitive int in simple, got: "${i}"`);
+      error(`Expected postitive int in simple, got: "${orig ?? i}"`);
     }
-    if (i[ORIGINAL].int > 255) {
-      error(`Simple value must be between 0 and 255, inclusive, got ${i.int}`);
+    if (orig > 255) {
+      error(`Simple value must be between 0 and 255, inclusive, got ${orig}`);
     }
-    return encode(new Simple(i[ORIGINAL].int));
+    return encode(new Simple(orig));
   }
 
 uint

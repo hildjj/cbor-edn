@@ -76,7 +76,10 @@ export class ByteTree {
     ret += ')[';
     ret += this.#items.map(i => {
       if (i instanceof Uint8Array) {
-        return `0x${u8toHex(i)}`;
+        if (i.length) {
+          return `0x${u8toHex(i)}`;
+        }
+        return '""';
       }
       return String(i);
     }).join(', ');

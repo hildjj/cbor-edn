@@ -24,4 +24,10 @@ export default [
       'no-new-wrappers': 'off',
     },
   },
+  {
+    files: ['bin/**/*'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
 ];

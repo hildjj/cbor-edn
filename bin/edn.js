@@ -1,5 +1,4 @@
 #!/usr/bin/env -S node --enable-source-maps
-/* eslint-disable no-console */
 
 import {DiagnosticSizes, comment, decode, diagnose} from 'cbor2';
 import {ByteTree} from '../lib/byteTree.js';
@@ -8,38 +7,56 @@ import {parseEDN} from '../lib/index.js';
 import {u8toHex} from 'cbor2/utils';
 import util from 'node:util';
 
+/** @type {import('node:util').ParseArgsConfig.options} */
+const options = {
+  always: {
+    short: 'a',
+    type: 'boolean',
+    default: false,
+    description: 'Always add encoding indicators',
+  },
+  never: {
+    short: 'n',
+    type: 'boolean',
+    default: false,
+    description: 'Never add encoding indicators',
+  },
+  file: {
+    short: 'f',
+    type: 'string',
+    multiple: true,
+    default: ['-'],
+    description: 'File to read from if no positional args.  "-" for stdin.',
+  },
+  startRule: {
+    short: 's',
+    type: 'string',
+    default: 'one_item',
+    description: 'Start at this rule for parsing, instead of "seq".',
+  },
+  help: {
+    short: 'h',
+    type: 'boolean',
+    description: 'Show help for this command',
+  },
+};
+
 // eslint-disable-next-line n/no-unsupported-features/node-builtins
 const opts = util.parseArgs({
   strict: true,
   allowPositionals: true,
-  options: {
-    startRule: {
-      short: 's',
-      type: 'string',
-      default: 'one_item',
-      description: 'Start at this rule for parsing, instead of "seq".',
-    },
-    never: {
-      short: 'n',
-      type: 'boolean',
-      default: false,
-      description: 'Never add encoding indicators',
-    },
-    always: {
-      short: 'a',
-      type: 'boolean',
-      default: false,
-      description: 'Always add encoding indicators',
-    },
-    file: {
-      short: 'f',
-      type: 'string',
-      multiple: true,
-      default: ['-'],
-      description: 'File to read from.  "-" for stdin.',
-    },
-  },
+  options,
 });
+
+if (opts.values.help) {
+  // Janky help
+  console.error('edn.js [options] [EDN string]\n');
+  for (const [k, v] of Object.entries(options)) {
+    const opt = `--${v.short}, --${k}`.padEnd(17, ' ');
+    console.error(`${opt}${v.description}`);
+  }
+  process.exit(64);
+}
 
 const colors = process.stdout.isTTY;
 let diagnosticSizes = DiagnosticSizes.PREFERRED;
