@@ -2,6 +2,8 @@ import {encode, encodedNumber, getEncoded} from 'cbor2';
 import {MT} from './constants.js';
 import {assert} from './assert.js';
 
+export const ORIGINAL = Symbol('ORIGINAL');
+
 export interface IntNumber {
   int: number;
 }
@@ -21,7 +23,7 @@ export type TypedNumber = IntNumber | FloatNumber;
  */
 export function numToBytes(
   n: TypedNumber,
-  spec?: string | null | undefined,
+  spec?: string | null,
   mt = MT.POS_INT
 ): Uint8Array {
   let num = null;
@@ -77,5 +79,11 @@ export function numToBytes(
 
   const enc = getEncoded(num);
   assert(enc);
+  Object.defineProperty(enc, ORIGINAL, {
+    configurable: false,
+    enumerable: false,
+    writable: false,
+    value: n,
+  });
   return enc;
 }

@@ -11,6 +11,7 @@ test('ByteTree', () => {
 
   bt = new ByteTree(hexToU8(''));
   assert.deepEqual(bt.bytes(), hexToU8(''));
+  assert.equal(util.inspect(bt), 'ByteTree(0)[""]');
 
   bt = new ByteTree(hexToU8('0102'));
   assert.deepEqual(bt.bytes(), hexToU8('0102'));

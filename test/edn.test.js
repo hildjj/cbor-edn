@@ -12,14 +12,29 @@ test('grammar coverage', async() => {
       invalidInput: '{',
     },
     {
-      validInput: '"foo" "bar"',
+      validInput: '"foo", "bar"',
       validResult: hexToU8('63666f6f63626172'),
-      peg$maxFailPos: 11,
+      peg$maxFailPos: 12,
+      options: {
+        startRule: 'seq',
+      },
     },
     {
-      validInput: '"foo" "bar" "baz"',
+      validInput: '"foo" ,"bar" , "baz"',
       validResult: hexToU8('63666f6f636261726362617a'),
-      peg$maxFailPos: 17,
+      peg$maxFailPos: 20,
+      options: {
+        startRule: 'seq',
+      },
+    },
+    {
+      invalidInput: '"foo" ,"bar" , "',
+      options: {
+        startRule: 'seq',
+      },
+    },
+    {
+      invalidInput: '{1:2, 3:4, ""',
     },
     {
       invalidInput: '\\!',

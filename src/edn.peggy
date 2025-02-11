@@ -1,11 +1,11 @@
 {{
-import {encode, Simple, Tag} from 'cbor2';
+import {decode, encode, Simple, Tag} from 'cbor2';
 import {base64UrlToBytes, hexToU8, u8toHex, u8concat} from 'cbor2/utils';
 import {ByteTree} from './byteTree.js';
 import {
   CUSTOM_APP_TAG, ELLIPSE_TAG, IPV4_TAG, IPV6_TAG, MT
 } from './constants.js';
-import {numToBytes} from './spec.js';
+import {numToBytes, ORIGINAL} from './spec.js';
 import {
   combineStrings, encodeDate, encodeHex, encodeIP, encodeIPv6, parseAppString
 } from './string.js';
@@ -50,7 +50,7 @@ function callRule(rule, start, end) {
 }
 
 seq
-  = S items:(first:item S rest:(OC @item S)* OC {
+  = S items:(first:item rest:(MSC @item S)* SOC {
       return new ByteTree(first, rest).bytes()
     })? {
         return items ?? new Uint8Array(0);
@@ -156,14 +156,24 @@ simple
   / "true" { return TRUE }
   / "null" { return NULL }
   / "undefined" { return UNDEFINED }
-  / "simple(" S i:(hexint / octint / binint / decnumber ) S ")" {
-    if (!('int' in i)) {
-      error(`Expected int in simple, got: "${JSON.stringify(i)}"`);
+  / "simple(" S i:item ")" {
+    const orig = i?.[ORIGINAL]?.int;
+    if (
+      !i ||
+      (i.constructor.name !== 'Uint8Array') ||
+      (i.length < 1) ||
+      (orig == null)
+    ) {
+      throw new Error(`Invalid simple item: ${i}`);
     }
-    if (i.int < 0 || i.int > 255) {
-      error(`Simple value must be between 0 and 255, inclusive, got ${i.int}`);
+    const first = i[0];
+    if ((first & 0b11100000) !== 0) {
+      error(`Expected postitive int in simple, got: "${orig ?? i}"`);
     }
-    return encode(new Simple(i.int));
+    if (orig > 255) {
+      error(`Simple value must be between 0 and 255, inclusive, got ${orig}`);
+    }
+    return encode(new Simple(orig));
   }
 
 uint
@@ -344,8 +354,8 @@ embedded
   = "<<" @seq ">>"
 
 array
-  = "[" spec:spec S items:(first:item S rest:(OC @item S)* OC { return [first, ...rest]; })? "]" {
-    const ents = items ?? [];
+  = "[" items:array_items "]" {
+    const [spec, ents] = items;
     const t = new ByteTree(
       numToBytes({int: ents.length}, spec, MT.ARRAY),
       ents
@@ -356,9 +366,13 @@ array
     return t;
   }
 
+array_items
+  = spec:spec S &"]" { return [spec, []] }
+  / @specms S @item|1.., MSC| SOC
+
 map
-  = "{" spec:spec S entries:(first:kp S rest:(OC @kp S)* OC { return [first, ...rest] })? "}" {
-    const ents = entries ?? [];
+  = "{" inside:map_pairs "}" {
+    const [spec, ents] = inside;
     const t = new ByteTree( numToBytes({int: ents.length}, spec, MT.MAP), ents);
     if (spec === '') {
       t.push(BREAK);
@@ -366,7 +380,11 @@ map
     return t;
   }
 
-kp
+map_pairs
+  = spec:spec S &"}" { return [spec, []] }
+  / @specms S @keyp|1.., MSC| SOC
+
+keyp
   = key:item S ":" S value:item {
     return new ByteTree(key, value);
   }
@@ -377,6 +395,16 @@ blank
   / LF
   / CR
   / SPACE
+
+MSC
+  = ("," S)
+  / (MS ("," S)?)
+
+MS
+  = (blank / comment) S
+
+SOC
+  = S ("," S)?
 
 S
   = blank* (comment blank*)*
@@ -436,22 +464,20 @@ slash_escaped
 hash_escaped
   = "\\" (SQUOTE / "\\")
 
-// optional trailing comma (ignored)
-OC
-  = ("," S)?
-
 streamstring
-  = "(_" S first:string S next:(OC @string S)* OC ")" {
+  = "(_" MS str:string|1.., MSC| SOC ")" {
     return new ByteTree(
-      new Uint8Array([(first.mt << 5) | 0x1f]),
-      first,
-      next,
+      new Uint8Array([(str[0].mt << 5) | 0x1f]),
+      str,
       BREAK,
-    )
+    );
   }
 
 spec
   = ("_" @$wordchar*)?
+
+specms
+  = ("_" @$wordchar* MS)?
 
 double_quoted
   = always_safe

@@ -40,27 +40,27 @@
     "version": "npm run clean && npm run build && git add src/version.ts"
   },
   "devDependencies": {
-    "@cto.af/eslint-config": "4.1.6",
-    "@fast-csv/format": "5.0.0",
-    "@fast-csv/parse": "5.0.0",
-    "@peggyjs/coverage": "1.2.0",
-    "@types/node": "22.5.1",
-    "abnf": "3.0.1",
-    "c8": "10.1.2",
-    "eslint-plugin-jsdoc": "50.2.2",
+    "@cto.af/eslint-config": "5.1.9",
+    "@fast-csv/format": "5.0.2",
+    "@fast-csv/parse": "5.0.2",
+    "@peggyjs/coverage": "1.3.2",
+    "@types/node": "22.13.1",
+    "abnf": "4.3.1",
+    "c8": "10.1.3",
+    "eslint": "9.20.0",
+    "eslint-plugin-jsdoc": "50.6.3",
     "eslint-plugin-markdown": "5.1.0",
-    "package-extract": "2.0.2",
+    "package-extract": "2.3.0",
     "peggy": "github:peggyjs/peggy",
     "rimraf": "6.0.1",
-    "typedoc": "0.26.6",
-    "typescript": "5.5.4",
-    "typescript-eslint": "8.3.0"
+    "typedoc": "0.27.7",
+    "typescript": "5.7.3",
+    "typescript-eslint": "8.24.0"
   },
   "dependencies": {
-    "@scure/base": "1.1.7",
-    "cbor2": "1.5.3"
+    "cbor2": "1.9.0"
   },
-  "packageManager": "pnpm@9.9.0",
+  "packageManager": "pnpm@10.3.0",
   "engines": {
     "node": ">=18"
   }

@@ -1,7 +1,7 @@
 # cbor-edn
 
 Parse CBOR Extended Diagnostic Notation as defined by
-[draft-ietf-cbor-edn-literals-11](https://www.ietf.org/archive/id/draft-ietf-cbor-edn-literals-11.html)
+[draft-ietf-cbor-edn-literals-16](https://www.ietf.org/archive/id/draft-ietf-cbor-edn-literals-16.html)
 and some CBOR working group discussions.
 
 To play with this, use the

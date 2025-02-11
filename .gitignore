@@ -3,4 +3,4 @@ coverage/
 docs/
 lib/
 node_modules/
-test.c
+src/draft-*.peggy
