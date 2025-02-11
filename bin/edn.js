@@ -39,6 +39,11 @@ const options = {
     type: 'boolean',
     description: 'Show help for this command',
   },
+  verbose: {
+    short: 'v',
+    type: 'boolean',
+    description: 'Verbose output from errors',
+  },
 };
 
 // eslint-disable-next-line n/no-unsupported-features/node-builtins
@@ -102,21 +107,25 @@ try {
       startRule: opts.values.startRule,
     });
     if (bytes instanceof Uint8Array) {
-      console.log('bytes:', u8toHex(bytes));
-      console.log(comment(bytes));
+      if (bytes.length > 0) {
+        console.log('bytes:', u8toHex(bytes));
+        console.log(comment(bytes));
 
-      const js = decode(bytes);
-      console.log('js:', util.inspect(js, {
-        depth: Infinity,
-        colors,
-      }));
+        const js = decode(bytes);
+        console.log('js:', util.inspect(js, {
+          depth: Infinity,
+          colors,
+        }));
 
-      console.log(
-        'diagonstic recreated from js:',
-        util.inspect(diagnose(bytes, {
-          diagnosticSizes,
-        }), {colors})
-      );
+        console.log(
+          'diagonstic recreated from js:',
+          util.inspect(diagnose(bytes, {
+            diagnosticSizes,
+          }), {colors})
+        );
+      } else {
+        console.log('no bytes generated');
+      }
     } else {
       console.log('js:', util.inspect(decodeU8(bytes), {
         depth: Infinity,
@@ -126,5 +135,9 @@ try {
     console.log();
   }
 } catch (e) {
-  console.log(e.message);
+  if (opts.values.verbose) {
+    console.log(e);
+  } else {
+    console.log(e.message);
+  }
 }

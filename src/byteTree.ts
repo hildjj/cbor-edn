@@ -41,7 +41,6 @@ export class ByteTree {
 
   public constructor(...item: ByteItem[]) {
     this.#items = item;
-
     this.#length = len(item);
   }
 

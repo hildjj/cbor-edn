@@ -50,7 +50,7 @@ function callRule(rule, start, end) {
 }
 
 seq
-  = S items:(first:item S rest:(OC @item S)* OC {
+  = S items:(first:item rest:(MSC @item S)* SOC {
       return new ByteTree(first, rest).bytes()
     })? {
         return items ?? new Uint8Array(0);
@@ -354,8 +354,8 @@ embedded
   = "<<" @seq ">>"
 
 array
-  = "[" spec:spec S items:(first:item S rest:(OC @item S)* OC { return [first, ...rest]; })? "]" {
-    const ents = items ?? [];
+  = "[" items:array_items "]" {
+    const [spec, ents] = items;
     const t = new ByteTree(
       numToBytes({int: ents.length}, spec, MT.ARRAY),
       ents
@@ -366,9 +366,13 @@ array
     return t;
   }
 
+array_items
+  = spec:spec S &"]" { return [spec, []] }
+  / @specms S @item|1.., MSC| SOC
+
 map
-  = "{" spec:spec S entries:(first:kp S rest:(OC @kp S)* OC { return [first, ...rest] })? "}" {
-    const ents = entries ?? [];
+  = "{" inside:map_pairs "}" {
+    const [spec, ents] = inside;
     const t = new ByteTree( numToBytes({int: ents.length}, spec, MT.MAP), ents);
     if (spec === '') {
       t.push(BREAK);
@@ -376,7 +380,11 @@ map
     return t;
   }
 
-kp
+map_pairs
+  = spec:spec S &"}" { return [spec, []] }
+  / @specms S @keyp|1.., MSC| SOC
+
+keyp
   = key:item S ":" S value:item {
     return new ByteTree(key, value);
   }
@@ -387,6 +395,16 @@ blank
   / LF
   / CR
   / SPACE
+
+MSC
+  = ("," S)
+  / (MS ("," S)?)
+
+MS
+  = (blank / comment) S
+
+SOC
+  = S ("," S)?
 
 S
   = blank* (comment blank*)*
@@ -446,22 +464,20 @@ slash_escaped
 hash_escaped
   = "\\" (SQUOTE / "\\")
 
-// optional trailing comma (ignored)
-OC
-  = ("," S)?
-
 streamstring
-  = "(_" S first:string S next:(OC @string S)* OC ")" {
+  = "(_" MS str:string|1.., MSC| SOC ")" {
     return new ByteTree(
-      new Uint8Array([(first.mt << 5) | 0x1f]),
-      first,
-      next,
+      new Uint8Array([(str[0].mt << 5) | 0x1f]),
+      str,
       BREAK,
-    )
+    );
   }
 
 spec
   = ("_" @$wordchar*)?
+
+specms
+  = ("_" @$wordchar* MS)?
 
 double_quoted
   = always_safe
