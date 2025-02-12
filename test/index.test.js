@@ -1,6 +1,5 @@
 import {parseEDN, registerAppString} from '../lib/index.js';
 import assert from 'node:assert/strict';
-// eslint-disable-next-line n/no-unsupported-features/node-builtins
 import test from 'node:test';
 import {u8toHex} from 'cbor2/utils';
 

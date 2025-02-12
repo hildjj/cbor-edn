@@ -4,15 +4,19 @@ import {
 import {Tag, encode} from 'cbor2';
 import {base64UrlToBytes, hexToU8, u8concat} from 'cbor2/utils';
 import {ByteTree} from './byteTree.js';
+import type {EDNoptions} from './index.js';
 import {numToBytes} from './spec.js';
+
+export const EDN_EMBEDDED_RANGES = Symbol('EDN_EMBEDDED_RANGES');
 
 const TD = new TextDecoder('utf-8', {
   fatal: true,
 });
+const TE = new TextEncoder();
 
 export interface StringChunk {
   mt: number; // -1 for unknown app-string
-  str: Uint8Array | string;
+  str: ByteTree | Uint8Array;
   spec?: string;
   prefix?: Uint8Array | string;
   v?: 4 | 6; // Only used for IP addresses
@@ -29,7 +33,10 @@ function customApp(chunk: StringChunk): ByteTree {
     throw new Error('Invalid prefix');
   }
   return new ByteTree(
-    encode(new Tag(CUSTOM_APP_TAG, [chunk.prefix, chunk.str]))
+    encode(new Tag(CUSTOM_APP_TAG, [
+      chunk.prefix,
+      TD.decode(chunk.str as Uint8Array),
+    ]))
   );
 }
 
@@ -38,10 +45,11 @@ function customApp(chunk: StringChunk): ByteTree {
  * app-strings.
  *
  * @param chunks The chunks to be combined.
+ * @param opts Options for UTF8-checking.
  * @returns Corresponding bytes.
  * @throws On invalid combinations.
  */
-export function combineStrings(chunks: ChunkTree): ByteTree {
+export function combineStrings(chunks: ChunkTree, opts?: EDNoptions): ByteTree {
   // Collapse app-strings as if they were inline.
   const s: ChunkOrEllipsis[] = chunks.flat() as ChunkOrEllipsis[];
   const [first] = s;
@@ -53,7 +61,7 @@ export function combineStrings(chunks: ChunkTree): ByteTree {
   */
   const elided = s.some(x => x instanceof ByteTree);
   const fne = s.find(x => !(x instanceof ByteTree)) as StringChunk | undefined;
-  const mode = fne?.mt ?? MT.ELLIPSIS;
+  const mode = fne?.mt ?? MT.ELLIPSIS; // ?? Only found ellipses
   let found = !(first instanceof ByteTree) && (first.mt === MT.CUSTOM);
 
   /*
@@ -67,10 +75,13 @@ export function combineStrings(chunks: ChunkTree): ByteTree {
   for (let i = 1; i < s.length; i++) {
     const si = s[i];
     const last = ret[ret.length - 1];
+
     if (si instanceof ByteTree) {
+      // Only ellipses will have a raw ByteTree
       if (!(last instanceof ByteTree)) {
         ret.push(si);
       }
+      // Else two ellipses in a row.  Ignore the second one.
     } else if (si.mt === MT.CUSTOM) {
       if ((mode !== MT.CUSTOM) || found) {
         throw new Error('Cannot concat custom app-string');
@@ -81,16 +92,16 @@ export function combineStrings(chunks: ChunkTree): ByteTree {
       if (mode !== MT.UTF8_STRING) {
         throw new Error('Invalid concat, str in non-str mode');
       }
-      if (last instanceof ByteTree) {
+      if (last instanceof ByteTree) { // Last was ellipsis
         ret.push(si);
       } else {
-        last.str = u8concat([last.str as Uint8Array, si.str as Uint8Array]);
+        last.str = new ByteTree(last.str, si.str);
       }
-    } else if (last instanceof ByteTree) {
+    } else if (last instanceof ByteTree) { // Last was ellipsis
       si.mt = mode;
       ret.push(si);
     } else {
-      last.str = u8concat([last.str as Uint8Array, si.str as Uint8Array]);
+      last.str = new ByteTree(last.str, si.str);
     }
   }
 
@@ -111,9 +122,10 @@ export function combineStrings(chunks: ChunkTree): ByteTree {
         if (mode === MT.CUSTOM) {
           return customApp(x);
         }
-        if (mode === MT.UTF8_STRING) {
+        if ((mode === MT.UTF8_STRING) && opts?.validateUTF8) {
           // Thows if invalid UTF-8.
-          TD.decode(x.str as Uint8Array);
+          const st = (x.str instanceof ByteTree) ? x.str.bytes() : x.str;
+          TD.decode(st);
         }
         if (mode === MT.ENCODED_BYTES) {
           return new ByteTree(x.str as Uint8Array);
@@ -126,15 +138,16 @@ export function combineStrings(chunks: ChunkTree): ByteTree {
     );
   }
 
-  // If not elided, we'll have exactly one entry.
+  // If not elided, we'll have coalesced to exactly one entry.
   const x = ret[0] as StringChunk;
   if (mode === MT.CUSTOM) {
     return customApp(x);
   }
 
-  if (mode === MT.UTF8_STRING) {
+  if ((mode === MT.UTF8_STRING) && opts?.validateUTF8) {
+    const st = (x.str instanceof ByteTree) ? x.str.bytes() : x.str;
     // Thows if invalid UTF-8.
-    TD.decode(x.str as Uint8Array);
+    TD.decode(st);
   }
 
   if (mode === MT.ENCODED_BYTES) {
@@ -389,7 +402,7 @@ export function parseAppString(
       null, {
         mt: MT.CUSTOM,
         prefix,
-        str,
+        str: TE.encode(str),
       },
     ];
   }

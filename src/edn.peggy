@@ -1,10 +1,8 @@
 {{
 import {decode, encode, Simple, Tag} from 'cbor2';
-import {base64UrlToBytes, hexToU8, u8toHex, u8concat} from 'cbor2/utils';
+import {base64UrlToBytes, hexToU8, setRanges, u8toHex, u8concat} from 'cbor2/utils';
 import {ByteTree} from './byteTree.js';
-import {
-  CUSTOM_APP_TAG, ELLIPSE_TAG, IPV4_TAG, IPV6_TAG, MT
-} from './constants.js';
+import {ELLIPSE_TAG, IPV4_TAG, IPV6_TAG, MT} from './constants.js';
 import {numToBytes, ORIGINAL} from './spec.js';
 import {
   combineStrings, encodeDate, encodeHex, encodeIP, encodeIPv6, parseAppString
@@ -50,11 +48,17 @@ function callRule(rule, start, end) {
 }
 
 seq
+  = tree:seq_tree {
+    return tree.bytes();
+  }
+
+// Original seq rule
+seq_tree
   = S items:(first:item rest:(MSC @item S)* SOC {
-      return new ByteTree(first, rest).bytes()
-    })? {
-        return items ?? new Uint8Array(0);
-      }
+    return new ByteTree(first, rest);
+  })? {
+    return items ?? new ByteTree();
+  }
 
 one_item
   = S item:item S {
@@ -85,15 +89,17 @@ string1e
 
 ellipsis
   = "."|3..| {
-    return new ByteTree(
-       numToBytes({int: ELLIPSE_TAG}, null, MT.TAG),
+    const bt = new ByteTree(
+      numToBytes({int: ELLIPSE_TAG}, null, MT.TAG),
       NULL
     );
+    bt.mt = MT.ELLIPSIS;
+    return bt;
   }
 
 string
   = s:string1e|1.., S "+" S| {
-    return combineStrings(s);
+    return combineStrings(s, options);
   }
 
 number
@@ -228,7 +234,11 @@ sqstr
 
 bstr
   = app_string
-  / s:sqstr { return {mt: MT.BYTE_STRING, str: TE.encode(s)}; }
+  / s:sqstr {
+      const str = TE.encode(s);
+      setRanges(str, [[0, str.length, "'"]]);
+      return {mt: MT.BYTE_STRING, str};
+    }
   / str:embedded { return {mt: MT.BYTE_STRING, str}; }
 
 app_string_h
@@ -351,7 +361,10 @@ tstr
   = DQUOTE dq:double_quoted* DQUOTE { return dq.join('') }
 
 embedded
-  = "<<" @seq ">>"
+  = "<<" str:seq_tree ">>" {
+    str.setRegion('<<');
+    return str;
+  }
 
 array
   = "[" items:array_items "]" {
@@ -373,7 +386,10 @@ array_items
 map
   = "{" inside:map_pairs "}" {
     const [spec, ents] = inside;
-    const t = new ByteTree( numToBytes({int: ents.length}, spec, MT.MAP), ents);
+    const t = new ByteTree(
+      numToBytes({int: ents.length}, spec, MT.MAP),
+      ents
+    );
     if (spec === '') {
       t.push(BREAK);
     }

@@ -1,5 +1,4 @@
 import {hexToU8} from 'cbor2/utils';
-// eslint-disable-next-line n/no-unsupported-features/node-builtins
 import test from 'node:test';
 import {testPeggy} from '@peggyjs/coverage';
 
