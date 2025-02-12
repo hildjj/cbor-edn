@@ -28,6 +28,9 @@ export interface EDNoptions {
 
   /** Set if parsing from a file to make error messages more helpful. */
   grammarSource?: GrammarSource;
+
+  /** Validate UTF8 for strings. */
+  validateUTF8?: boolean;
 }
 
 /**
@@ -44,7 +47,7 @@ export function parseEDN(
 ): Uint8Array {
   opts = {
     startRule: 'one_item',
-    grammarSource: 'parseEDN',
+    grammarSource: source,
     ...opts,
   };
 
@@ -54,7 +57,7 @@ export function parseEDN(
     const ef = e as SyntaxError;
     if (typeof ef.format === 'function') {
       // @ts-expect-error message is not readonly
-      ef.message = ef.format([{source, text: edn}]);
+      ef.message = ef.format([{source: opts.grammarSource, text: edn}]);
     }
     throw e;
   }

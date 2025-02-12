@@ -1,10 +1,10 @@
 #!/usr/bin/env -S node --enable-source-maps
 
+import {CBOR_RANGES, u8toHex} from 'cbor2/utils';
 import {DiagnosticSizes, comment, decode, diagnose} from 'cbor2';
 import {ByteTree} from '../lib/byteTree.js';
 import fs from 'node:fs';
 import {parseEDN} from '../lib/index.js';
-import {u8toHex} from 'cbor2/utils';
 import util from 'node:util';
 
 /** @type {import('node:util').ParseArgsConfig.options} */
@@ -34,6 +34,11 @@ const options = {
     default: 'one_item',
     description: 'Start at this rule for parsing, instead of "seq".',
   },
+  validateUTF8: {
+    short: 'V',
+    type: 'boolean',
+    description: 'Validate UTF8 in strings',
+  },
   help: {
     short: 'h',
     type: 'boolean',
@@ -46,7 +51,6 @@ const options = {
   },
 };
 
-// eslint-disable-next-line n/no-unsupported-features/node-builtins
 const opts = util.parseArgs({
   strict: true,
   allowPositionals: true,
@@ -76,10 +80,6 @@ if (opts.values.always) {
   diagnosticSizes = DiagnosticSizes.ALWAYS;
 }
 
-const inputs = (opts.positionals.length < 1) ?
-  opts.values.file.map(f => fs.readFileSync((f === '-') ? 0 : f, 'utf8')) :
-  opts.positionals;
-
 function decodeU8(obj) {
   if (typeof obj === 'object') {
     if (obj instanceof Uint8Array) {
@@ -101,14 +101,22 @@ function decodeU8(obj) {
   return obj;
 }
 
+const inputs = (opts.positionals.length < 1) ?
+  opts.values.file.map(f => fs.readFileSync((f === '-') ? 0 : f, 'utf8')) :
+  opts.positionals;
+
 try {
+  let i = 0;
   for (const inp of inputs) {
     const bytes = parseEDN(inp, {
       startRule: opts.values.startRule,
+      grammarSource: (opts.positionals.length < 1) ? opts.values.file[i++] : `argument#${++i}`,
+      validateUTF8: opts.values.validateUTF8,
     });
     if (bytes instanceof Uint8Array) {
       if (bytes.length > 0) {
         console.log('bytes:', u8toHex(bytes));
+        console.log('ranges:', bytes[CBOR_RANGES]);
         console.log(comment(bytes));
 
         const js = decode(bytes);

@@ -5,7 +5,6 @@ import fs from 'node:fs';
 import {parse} from '@fast-csv/parse';
 import {parseEDN} from '../lib/index.js';
 import path from 'node:path';
-// eslint-disable-next-line n/no-unsupported-features/node-builtins
 import {test} from 'node:test';
 
 const rootDir = fileURLToPath(new URL('../', import.meta.url));
@@ -42,14 +41,17 @@ function testCSVfile(filename) {
             case '-':
               if (expected) {
                 bytesOrig = parseEDN(orig);
-                bytesExpected = parseEDN(expected);
+                bytesExpected = parseEDN(expected, {validateUTF8: true});
                 assert.notDeepEqual(
                   bytesOrig,
                   bytesExpected,
                   u8toHex(bytesOrig)
                 );
               } else {
-                assert.throws(() => parseEDN(orig), JSON.stringify(orig));
+                assert.throws(
+                  () => parseEDN(orig, {validateUTF8: true}),
+                  JSON.stringify(orig)
+                );
               }
               break;
             case 'x': {
