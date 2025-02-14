@@ -1,10 +1,10 @@
 #!/usr/bin/env -S node --enable-source-maps
 
-import {CBOR_RANGES, u8toHex} from 'cbor2/utils';
 import {DiagnosticSizes, comment, decode, diagnose} from 'cbor2';
 import {ByteTree} from '../lib/byteTree.js';
 import fs from 'node:fs';
 import {parseEDN} from '../lib/index.js';
+import {u8toHex} from 'cbor2/utils';
 import util from 'node:util';
 
 /** @type {import('node:util').ParseArgsConfig.options} */
@@ -116,7 +116,6 @@ try {
     if (bytes instanceof Uint8Array) {
       if (bytes.length > 0) {
         console.log('bytes:', u8toHex(bytes));
-        console.log('ranges:', bytes[CBOR_RANGES]);
         console.log(comment(bytes));
 
         const js = decode(bytes);

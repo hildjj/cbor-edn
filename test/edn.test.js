@@ -27,6 +27,21 @@ test('grammar coverage', async() => {
       },
     },
     {
+      invalidInput: '<<"foo", "bar", "baz">>',
+      options: {
+        startRule: 'one_item',
+        peg$failAfter: {
+          peg$parseseq_tree: 0,
+        },
+      },
+    },
+    {
+      invalidInput: '{-',
+      options: {
+        peg$silentFails: -1,
+      },
+    },
+    {
       invalidInput: '"foo" ,"bar" , "',
       options: {
         startRule: 'seq',

@@ -60,6 +60,9 @@ function getRegions(item: ByteItem, offset: number): CborRange[] {
       offset = last[0] + last[1];
       ret.push(...r);
     }
+    if (ret.length === 0) {
+      ret.push([offset, 0]);
+    }
     return ret;
   }
   if (item instanceof Uint8Array) {
