@@ -51,14 +51,14 @@
     "eslint-plugin-jsdoc": "50.6.3",
     "eslint-plugin-markdown": "5.1.0",
     "package-extract": "2.3.0",
-    "peggy": "github:peggyjs/peggy",
+    "peggy": "4.2.0",
     "rimraf": "6.0.1",
     "typedoc": "0.27.7",
     "typescript": "5.7.3",
     "typescript-eslint": "8.24.0"
   },
   "dependencies": {
-    "cbor2": "1.10.0"
+    "cbor2": "1.11.0"
   },
   "packageManager": "pnpm@10.4.0",
   "engines": {

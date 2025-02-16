@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       cbor2:
-        specifier: 1.10.0
-        version: 1.10.0
+        specifier: 1.11.0
+        version: 1.11.0
     devDependencies:
       '@cto.af/eslint-config':
         specifier: 5.1.9
@@ -46,8 +46,8 @@ importers:
         specifier: 2.3.0
         version: 2.3.0
       peggy:
-        specifier: github:peggyjs/peggy
-        version: https://codeload.github.com/peggyjs/peggy/tar.gz/f28cbaa66a13f23ba78338bbfc041affe0b6f70e
+        specifier: 4.2.0
+        version: 4.2.0
       rimraf:
         specifier: 6.0.1
         version: 6.0.1
@@ -350,8 +350,8 @@ packages:
     resolution: {integrity: sha512-P8BjAsXvZS+VIDUI11hHCQEv74YT67YUi5JJFNWIqL235sBmjX4+qx9Muvls5ivyNENctx46xQLQ3aTuE7ssaQ==}
     engines: {node: '>=6'}
 
-  cbor2@1.10.0:
-    resolution: {integrity: sha512-KbUUpYws10cOpTPg/uHQu+A7vSEJY57BUsugzObj5YRR6b5oS/LfPQdovg8obW5oT5BuiF6+EHxifA8xASPfHA==}
+  cbor2@1.11.0:
+    resolution: {integrity: sha512-teHnpDGcDzwouFJgCJLpDY2zMaEOYvYDryd6sln67wPrCuObmwriG1NAA1w7rUIf/l++bNdts4U7WeVdYTGwLg==}
     engines: {node: '>=18.7'}
 
   chalk@4.1.2:
@@ -831,12 +831,6 @@ packages:
 
   peggy@4.2.0:
     resolution: {integrity: sha512-ZjzyJYY8NqW8JOZr2PbS/J0UH/hnfGALxSDsBUVQg5Y/I+ZaPuGeBJ7EclUX2RvWjhlsi4pnuL1C/K/3u+cDeg==}
-    engines: {node: '>=18'}
-    hasBin: true
-
-  peggy@https://codeload.github.com/peggyjs/peggy/tar.gz/f28cbaa66a13f23ba78338bbfc041affe0b6f70e:
-    resolution: {tarball: https://codeload.github.com/peggyjs/peggy/tar.gz/f28cbaa66a13f23ba78338bbfc041affe0b6f70e}
-    version: 4.2.0
     engines: {node: '>=18'}
     hasBin: true
 
@@ -1417,7 +1411,7 @@ snapshots:
 
   callsites@3.1.0: {}
 
-  cbor2@1.10.0: {}
+  cbor2@1.11.0: {}
 
   chalk@4.1.2:
     dependencies:
@@ -1913,12 +1907,6 @@ snapshots:
       minipass: 7.1.2
 
   peggy@4.2.0:
-    dependencies:
-      '@peggyjs/from-mem': 1.3.5
-      commander: 12.1.0
-      source-map-generator: 0.8.0
-
-  peggy@https://codeload.github.com/peggyjs/peggy/tar.gz/f28cbaa66a13f23ba78338bbfc041affe0b6f70e:
     dependencies:
       '@peggyjs/from-mem': 1.3.5
       commander: 12.1.0
