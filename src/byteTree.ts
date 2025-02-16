@@ -51,11 +51,11 @@ function hasRegions(item: ByteItem): boolean {
   throw new Error(`Invalid ByteTree item: ${item}`);
 }
 
-function getRegions(item: ByteItem, offset: number): CborRange[] {
+function getRegions(item: ByteItem, offset: number, depth = 0): CborRange[] {
   if (Array.isArray(item)) {
     const ret: CborRange[] = [];
     for (const i of item) {
-      const r = getRegions(i, offset);
+      const r = getRegions(i, offset, depth + 1);
       const last = r[r.length - 1];
       offset = last[0] + last[1];
       ret.push(...r);
@@ -80,16 +80,16 @@ function getRegions(item: ByteItem, offset: number): CborRange[] {
   }
   // eslint-disable-next-line @typescript-eslint/no-use-before-define
   if (item instanceof ByteTree) {
-    if (item.hasRegions) {
-      const ret: CborRange[] = [];
-      for (const r of item.regions) {
-        const s: CborRange = [...r];
-        s[0] += offset;
-        ret.push(s);
-      }
-      return ret;
+    if (!item.hasRegions) {
+      item.setRegion();
     }
-    return [[offset, item.length]];
+    const ret: CborRange[] = [];
+    for (const r of item.regions) {
+      const s: CborRange = [...r];
+      s[0] += offset;
+      ret.push(s);
+    }
+    return ret;
   }
   throw new Error(`Invalid ByteTree item: ${item}`);
 }
@@ -124,7 +124,17 @@ export class ByteTree {
 
   public setRegion(type?: string): void {
     this.#hasRegions = true;
-    this.#regions.push([0, this.#length, type]);
+    this.#regions = getRegions(this.#items, 0);
+    if (type) {
+      if (
+        (this.#regions[0][0] === 0) &&
+        (this.#regions[0][1] === this.#length)
+      ) {
+        this.#regions[0][2] = type;
+      } else {
+        this.#regions.unshift([0, this.#length, type]);
+      }
+    }
   }
 
   public bytes(into?: Uint8Array, offset = 0): Uint8Array {
