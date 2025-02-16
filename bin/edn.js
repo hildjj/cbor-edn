@@ -1,10 +1,10 @@
 #!/usr/bin/env -S node --enable-source-maps
 
 import {DiagnosticSizes, comment, decode, diagnose} from 'cbor2';
+import {getRanges, u8toHex} from 'cbor2/utils';
 import {ByteTree} from '../lib/byteTree.js';
 import fs from 'node:fs';
 import {parseEDN} from '../lib/index.js';
-import {u8toHex} from 'cbor2/utils';
 import util from 'node:util';
 
 /** @type {import('node:util').ParseArgsConfig.options} */
@@ -27,6 +27,11 @@ const options = {
     multiple: true,
     default: ['-'],
     description: 'File to read from if no positional args.  "-" for stdin.',
+  },
+  ranges: {
+    short: 'r',
+    type: 'boolean',
+    description: 'Output ranges',
   },
   startRule: {
     short: 's',
@@ -116,6 +121,9 @@ try {
     if (bytes instanceof Uint8Array) {
       if (bytes.length > 0) {
         console.log('bytes:', u8toHex(bytes));
+        if (opts.values.ranges) {
+          console.log(getRanges(bytes));
+        }
         console.log(comment(bytes));
 
         const js = decode(bytes);
