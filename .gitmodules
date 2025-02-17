@@ -1,3 +1,3 @@
-[submodule "edn-abnf"]
-	path = edn-abnf
-	url = https://github.com/cabo/edn-abnf.git
+[submodule "edn-test-vectors"]
+	path = edn-test-vectors
+	url = https://github.com/hildjj/edn-test-vectors.git

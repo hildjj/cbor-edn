@@ -16,32 +16,32 @@ function testCSVfile(filename) {
   return new Promise((resolve, reject) => {
     let line = 1;
     const stream = parse({
-      headers: false,
+      headers: true,
       ignoreEmpty: true,
       trim: false,
       comment: '#',
     })
       .on('error', reject)
-      .on('data', ([op, orig, expected]) => {
+      .on('data', ({op, input, output}) => {
         line++;
         let bytesOrig = null;
         let bytesExpected = null;
         try {
-          const obytes = orig.match(/^h\](?<hex>[0-9a-f]+)/i);
+          const obytes = input.match(/^h\](?<hex>[0-9a-f]+)/i);
           if (obytes) {
-            orig = TD.decode(hexToU8(obytes.groups.hex));
+            input = TD.decode(hexToU8(obytes.groups.hex));
           }
           switch (op) {
             case '=': {
-              bytesOrig = parseEDN(orig);
-              bytesExpected = parseEDN(expected);
-              assert.deepEqual(bytesOrig, bytesExpected, orig);
+              bytesOrig = parseEDN(input);
+              bytesExpected = parseEDN(output);
+              assert.deepEqual(bytesOrig, bytesExpected, input);
               break;
             }
             case '-':
-              if (expected) {
-                bytesOrig = parseEDN(orig);
-                bytesExpected = parseEDN(expected, {validateUTF8: true});
+              if (output) {
+                bytesOrig = parseEDN(input);
+                bytesExpected = parseEDN(output, {validateUTF8: true});
                 assert.notDeepEqual(
                   bytesOrig,
                   bytesExpected,
@@ -49,15 +49,15 @@ function testCSVfile(filename) {
                 );
               } else {
                 assert.throws(
-                  () => parseEDN(orig, {validateUTF8: true}),
-                  JSON.stringify(orig)
+                  () => parseEDN(input, {validateUTF8: true}),
+                  JSON.stringify(input)
                 );
               }
               break;
             case 'x': {
-              bytesOrig = parseEDN(orig);
-              bytesExpected = hexToU8(expected);
-              assert.deepEqual(bytesOrig, bytesExpected, expected);
+              bytesOrig = parseEDN(input);
+              bytesExpected = hexToU8(output);
+              assert.deepEqual(bytesOrig, bytesExpected, output);
               break;
             }
             default:
@@ -66,7 +66,7 @@ function testCSVfile(filename) {
           }
         } catch (e) {
           // eslint-disable-next-line no-console
-          console.log('CAUGHT', op, JSON.stringify(orig), JSON.stringify(expected), `at ${filename}:${line}`, {
+          console.log('CAUGHT', op, JSON.stringify(input), JSON.stringify(output), `at ${filename}:${line}`, {
             bytesOrig,
             bytesExpected,
           });
@@ -93,10 +93,6 @@ async function testDir(dir) {
   });
 }
 
-test('local csv', () => testDir(
-  new URL('./', import.meta.url)
-));
-
-test('from ruby edn-abnf', () => testDir(
-  new URL('../edn-abnf/tests/', import.meta.url)
+test('edn-test-vectors', () => testDir(
+  new URL('../edn-test-vectors/', import.meta.url)
 ));
