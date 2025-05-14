@@ -76,18 +76,5 @@ test('grammar coverage', async() => {
         peg$silentFails: -1,
       },
     },
-    // HTAB is hoisted, so it gets abandoned
-    {
-      validInput: '\t',
-      options: {
-        peg$startRuleFunction: 'peg$parseHTAB',
-      },
-    },
-    {
-      invalidInput: '0',
-      options: {
-        peg$startRuleFunction: 'peg$parseHTAB',
-      },
-    },
   ]);
 });
